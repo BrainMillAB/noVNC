@@ -2405,6 +2405,101 @@ describe('Remote Frame Buffer protocol client', function () {
                 });
             });
 
+            describe('ATEN iKVM detection (inside Tight type 16) and auth', function () {
+                // ATEN BMCs advertise themselves as supporting only
+                // security type 16 (Tight) and then speak a non-Tight
+                // auth handshake.  The Tight handler detects ATEN via
+                // two heuristics and branches to _negotiateATENAuth.
+                beforeEach(function () {
+                    sendSecurity(16, client);                      // server offers only type 16
+                    client._sock._websocket._getSentData();         // skip sec-type reply
+                });
+
+                it('heuristic #0 triggers on numTunnels=0 and fires credentialsrequired', function () {
+                    const spy = sinon.spy();
+                    client.addEventListener("credentialsrequired", spy);
+                    // numTunnels = 0 → ATEN-shaped.
+                    client._sock._websocket._receiveData(new Uint8Array([0, 0, 0, 0]));
+                    expect(spy).to.have.been.calledOnce;
+                    expect(spy.args[0][0].detail.types).to.have.members(["username", "password"]);
+                    expect(client._rfbTightVNC).to.be.true;
+                });
+
+                it('heuristic #0 triggers on an implausibly large numTunnels', function () {
+                    const spy = sinon.spy();
+                    client.addEventListener("credentialsrequired", spy);
+                    // numTunnels = 0x02000000 → way above the 0x1000000 cap for sane Tight.
+                    client._sock._websocket._receiveData(new Uint8Array([0x02, 0x00, 0x00, 0x00]));
+                    expect(spy).to.have.been.calledOnce;
+                    expect(spy.args[0][0].detail.types).to.have.members(["username", "password"]);
+                });
+
+                it('heuristic #1 triggers on subAuthCount = 0x0100 after numTunnels=0', function () {
+                    // numTunnels=0 would trigger heuristic #0 above; to
+                    // reach heuristic #1 we need a numTunnels value that
+                    // sits in the "sane Tight" range.  Using 0 does hit
+                    // heuristic #0 first, so instead we force the sub-
+                    // auth path by declaring numTunnels=0 while NOT
+                    // matching heuristic #0 (server offered multiple
+                    // security types, not just 0x10).  Test covers only
+                    // the logical disjunction below.
+                    client._rfbServerSupportedSecurityTypes = [2, 16]; // bypass heuristic #0
+                    client._sock._websocket._receiveData(new Uint8Array([0, 0, 0, 0])); // numTunnels=0
+                    // sub-auth phase: subAuthCount=0x00000100 and 16*256
+                    // bytes of capability data follow.  For heuristic #1
+                    // to take over we don't actually need to feed the
+                    // caps — detection fires at the rQwait point.
+                    const capPayload = new Uint8Array(4 + 16 * 0x100);
+                    capPayload[2] = 0x01; // big-endian u32: 0x00000100
+                    const spy = sinon.spy();
+                    client.addEventListener("credentialsrequired", spy);
+                    client._sock._websocket._receiveData(capPayload);
+                    expect(spy).to.have.been.calledOnce;
+                    expect(spy.args[0][0].detail.types).to.have.members(["username", "password"]);
+                });
+
+                it('sends 48-byte auth payload on credentials and transitions to SecurityResult', function () {
+                    client.addEventListener("credentialsrequired", () => {
+                        client.sendCredentials({ username: 'ADMIN', password: 'ADMIN' });
+                    });
+                    // numTunnels=0 → heuristic #0
+                    client._sock._websocket._receiveData(new Uint8Array([0, 0, 0, 0]));
+                    // Supply the 16 bytes of server-emitted filler
+                    // after detection.
+                    const filler = new Uint8Array(16);
+                    client._sock._websocket._receiveData(filler);
+
+                    clock.tick();
+                    const sent = client._sock._websocket._getSentData();
+                    expect(sent.length).to.equal(48);
+                    // First 24: "ADMIN" + 19 null bytes
+                    expect(String.fromCharCode(...sent.slice(0, 5))).to.equal('ADMIN');
+                    for (let i = 5; i < 24; ++i) { expect(sent[i]).to.equal(0); }
+                    // Next 24: "ADMIN" + 19 null bytes
+                    expect(String.fromCharCode(...sent.slice(24, 29))).to.equal('ADMIN');
+                    for (let i = 29; i < 48; ++i) { expect(sent[i]).to.equal(0); }
+                    expect(client._rfbAtenikvm).to.be.true;
+                    expect(client._rfbInitState).to.equal('SecurityResult');
+                });
+
+                it('fails cleanly when credentials exceed 24 bytes', function () {
+                    client.addEventListener("credentialsrequired", () => {
+                        client.sendCredentials({
+                            username: 'x'.repeat(25),
+                            password: 'p',
+                        });
+                    });
+                    const callback = sinon.spy();
+                    client.addEventListener("disconnect", callback);
+                    // numTunnels=0 + filler to let auth proceed
+                    client._sock._websocket._receiveData(new Uint8Array([0, 0, 0, 0]));
+                    client._sock._websocket._receiveData(new Uint8Array(16));
+                    clock.tick();
+                    expect(callback).to.have.been.calledOnce;
+                    expect(callback.args[0][0].detail.clean).to.be.false;
+                });
+            });
+
             describe('VeNCrypt authentication (type 19) handler', function () {
                 beforeEach(function () {
                     sendSecurity(19, client);

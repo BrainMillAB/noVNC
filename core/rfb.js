@@ -136,6 +136,17 @@ export default class RFB extends EventTargetMixin {
         this._rfbTightVNC = false;
         this._rfbVeNCryptState = 0;
         this._rfbXvpVer = 0;
+        // ATEN iKVM (Supermicro / other ATEN-based BMCs) piggybacks on
+        // Tight security but speaks its own auth handshake and video
+        // encodings.  The flag is set once detection succeeds in
+        // _negotiateTightAuth and drives the ATEN code paths for the
+        // rest of the session.
+        this._rfbAtenikvm = false;
+        // Raw list of security types the server offered.  Saved during
+        // _negotiateSecurity so that _negotiateTightAuth's ATEN
+        // heuristic #0 can look at it ("does the server offer ONLY
+        // 0x10?  Then it's probably ATEN masquerading as Tight").
+        this._rfbServerSupportedSecurityTypes = [];
 
         this._fbWidth = 0;
         this._fbHeight = 0;
@@ -1589,6 +1600,10 @@ export default class RFB extends EventTargetMixin {
             const types = this._sock.rQshiftBytes(numTypes);
             Log.Debug("Server security types: " + types);
 
+            // Remembered for ATEN detection heuristics inside
+            // _negotiateTightAuth — ATEN servers advertise only 0x10.
+            this._rfbServerSupportedSecurityTypes = Array.from(types);
+
             // Look for a matching security type in the order that the
             // server prefers
             this._rfbAuthScheme = -1;
@@ -1934,9 +1949,44 @@ export default class RFB extends EventTargetMixin {
     }
 
     _negotiateTightAuth() {
+        // Once ATEN has been detected on a prior call we always route
+        // through the ATEN-specific handshake.  Without this check, a
+        // "credentials required" turnaround (dispatchEvent + resume)
+        // would come back here and incorrectly try to read more Tight
+        // data that ATEN never sends.
+        if (this._rfbAtenikvm) {
+            return this._negotiateATENAuth();
+        }
+
+        // Hoisted so ATEN heuristic #1 below can inspect the value
+        // seen on the first pass.
+        let numTunnels = 0;
         if (!this._rfbTightVNC) {  // first pass, do the tunnel negotiation
             if (this._sock.rQwait("num tunnels", 4)) { return false; }
-            const numTunnels = this._sock.rQshift32();
+            numTunnels = this._sock.rQshift32();
+
+            // ATEN iKVM heuristic #0 — the server advertises only
+            // security type 0x10 (Tight) and "numTunnels" is either
+            // zero or an implausibly large value (TightVNC never sends
+            // more than a handful).  In that case, this is not really
+            // Tight; it is ATEN and the rest of the stream is the
+            // ATEN-specific auth handshake.  Commit both flags here
+            // because we leave the Tight state machine entirely.
+            if (this._rfbVersion === 3.8 &&
+                this._rfbServerSupportedSecurityTypes.length === 1 &&
+                this._rfbServerSupportedSecurityTypes[0] === securityTypeTight &&
+                (numTunnels <= 0 || numTunnels > 0x1000000)) {
+                Log.Info("Detected ATEN iKVM server (Tight heuristic #0)");
+                this._rfbTightVNC = true;
+                this._rfbAtenikvm = true;
+                return this._negotiateATENAuth();
+            }
+
+            // Note: the rQwait below uses goback=4, so if tunnel-cap
+            // data is not yet available it rolls back the numTunnels
+            // read and re-enters this branch cleanly on the next call.
+            // For that to work, _rfbTightVNC must remain FALSE until
+            // after the wait succeeds.
             if (numTunnels > 0 && this._sock.rQwait("tunnel capabilities", 16 * numTunnels, 4)) { return false; }
 
             this._rfbTightVNC = true;
@@ -1956,6 +2006,19 @@ export default class RFB extends EventTargetMixin {
         }
 
         if (this._sock.rQwait("sub auth capabilities", 16 * subAuthCount, 4)) { return false; }
+
+        // ATEN iKVM heuristic #1 — newer AST2400 BMCs.  numTunnels was
+        // zero, but the sub-auth-count still matches the ATEN shape.
+        // Fork note: could additionally require "server offered only
+        // 0x10", which is already implied by reaching this branch via
+        // the Tight auth path.
+        if (this._rfbVersion === 3.8 &&
+            numTunnels === 0 &&
+            (subAuthCount === 0 || (subAuthCount & 0xFFFF) === 0x0100)) {
+            Log.Info("Detected ATEN iKVM server (Tight heuristic #1, AST2400?)");
+            this._rfbAtenikvm = true;
+            return this._negotiateATENAuth();
+        }
 
         const clientSupportedTypes = {
             'STDVNOAUTH__': 1,
@@ -1997,6 +2060,56 @@ export default class RFB extends EventTargetMixin {
         }
 
         return this._fail("No supported sub-auth types!");
+    }
+
+    // ATEN iKVM uses security type 0x10 (Tight) as a stepping-stone
+    // but speaks a completely different auth handshake underneath:
+    //
+    //   Client->server (after ATEN detection succeeds):
+    //     skip 16 leading bytes emitted by the server
+    //     send 24 bytes (username, null-padded) ||
+    //          24 bytes (password, null-padded)
+    //   Server->client:
+    //     standard 4-byte SecurityResult (0 = OK, nonzero = fail)
+    //
+    // Credentials are asked for via the same "credentialsrequired"
+    // event pattern mainline uses for ARD / XVP / RA2ne — two fields,
+    // username and password.
+    _negotiateATENAuth() {
+        if (this._rfbCredentials.username === undefined ||
+            this._rfbCredentials.password === undefined) {
+            this.dispatchEvent(new CustomEvent(
+                "credentialsrequired",
+                { detail: { types: ["username", "password"] } }));
+            return false;
+        }
+
+        if (this._sock.rQwait("ATEN auth padding", 16)) { return false; }
+
+        // The next 16 bytes are server-emitted filler that ATEN ignores
+        // (original kelleyk fork calls them the "mysteryFlag" region).
+        this._sock.rQskipBytes(16);
+
+        const user = this._rfbCredentials.username;
+        const pass = this._rfbCredentials.password;
+        if (user.length > 24 || pass.length > 24) {
+            return this._fail("ATEN credentials too long (max 24 bytes each)");
+        }
+
+        const buf = new Uint8Array(48);
+        for (let i = 0; i < user.length; ++i) {
+            buf[i] = user.charCodeAt(i) & 0xff;
+        }
+        for (let i = 0; i < pass.length; ++i) {
+            buf[24 + i] = pass.charCodeAt(i) & 0xff;
+        }
+        // Bytes [user.length..23] and [24+pass.length..47] stay zero.
+
+        this._sock.sQpushBytes(buf);
+        this._sock.flush();
+
+        this._rfbInitState = 'SecurityResult';
+        return true;
     }
 
     _handleRSAAESCredentialsRequired(event) {
