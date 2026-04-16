@@ -72,6 +72,37 @@ describe('ATEN XK2HID table', function () {
         expect(ATENXK2HID[KeyTable.XK_underscore]).to.equal(ATENXK2HID[KeyTable.XK_minus]);
         expect(ATENXK2HID[KeyTable.XK_quotedbl]).to.equal(ATENXK2HID[KeyTable.XK_apostrophe]);
     });
+
+    describe('Nordic / German ISO layout extensions', function () {
+        it('maps Swedish/Finnish å, ä, ö to their physical key HIDs', function () {
+            expect(ATENXK2HID[KeyTable.XK_aring]).to.equal(0x2F);         // å at [ pos
+            expect(ATENXK2HID[KeyTable.XK_Aring]).to.equal(0x2F);
+            expect(ATENXK2HID[KeyTable.XK_adiaeresis]).to.equal(0x34);    // ä at ' pos
+            expect(ATENXK2HID[KeyTable.XK_Adiaeresis]).to.equal(0x34);
+            expect(ATENXK2HID[KeyTable.XK_odiaeresis]).to.equal(0x33);    // ö at ; pos
+            expect(ATENXK2HID[KeyTable.XK_Odiaeresis]).to.equal(0x33);
+        });
+
+        it('maps Danish/Norwegian æ, ø to their physical key HIDs', function () {
+            expect(ATENXK2HID[KeyTable.XK_ae]).to.equal(0x34);            // æ at ' pos
+            expect(ATENXK2HID[KeyTable.XK_AE]).to.equal(0x34);
+            expect(ATENXK2HID[KeyTable.XK_oslash]).to.equal(0x33);        // ø at ; pos
+            expect(ATENXK2HID[KeyTable.XK_Ooblique]).to.equal(0x33);
+        });
+
+        it('maps German ü, ß to their physical key HIDs', function () {
+            expect(ATENXK2HID[KeyTable.XK_udiaeresis]).to.equal(0x2F);    // ü at [ pos (shared with Nordic å)
+            expect(ATENXK2HID[KeyTable.XK_Udiaeresis]).to.equal(0x2F);
+            expect(ATENXK2HID[KeyTable.XK_ssharp]).to.equal(0x2D);        // ß at -_ pos
+        });
+
+        it('US-base mappings are untouched by the international additions', function () {
+            // The US shifted-punctuation overrides must still work.
+            expect(ATENXK2HID[KeyTable.XK_at]).to.equal(0x1F);            // US shift+2 = 2-key HID
+            expect(ATENXK2HID[KeyTable.XK_Return]).to.equal(0x28);
+            expect(ATENXK2HID[KeyTable.XK_a]).to.equal(0x04);
+        });
+    });
 });
 
 describe('RFB.messages.atenKeyEvent', function () {

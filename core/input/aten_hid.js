@@ -102,4 +102,56 @@ XK2HID[KeyTable.XK_bar]          = XK2HID[KeyTable.XK_backslash];
 XK2HID[KeyTable.XK_quotedbl]     = XK2HID[KeyTable.XK_apostrophe];
 XK2HID[KeyTable.XK_asciitilde]   = XK2HID[KeyTable.XK_grave];
 
+//
+// International layout extensions.  X keysyms for layout-specific
+// letters (å, ä, ö, æ, ø, ü, ß, …) are distinct per character and are
+// never emitted by a US-layout keyboard, so adding them here cannot
+// conflict with the US entries above.  Each keysym maps to the HID
+// scancode of its *physical key position* on the native layout —
+// Nordic/German/Finnish physical keyboards share the same ANSI+1
+// arrangement, so several entries coincide on HID codes despite
+// different visible labels, which is fine (a Swedish user's browser
+// emits XK_aring and we send HID 0x2F; a German user's browser emits
+// XK_udiaeresis for the same physical key position and we send the
+// same HID 0x2F — the BMC-attached guest OS's keymap decides the
+// final character either way).
+//
+// HID scancodes cited here are from the HID Usage Tables for Desktop
+// Keyboards (Usage Page 0x07), matching the ISO 105-key layout that
+// Nordic/German ISO keyboards use.
+
+// Nordic (Swedish, Finnish, Danish, Norwegian) — ISO layout, shared
+// physical positions for the three dead keys on the right of QWERTY:
+//   [ position -> å   (all four)
+//   ; position -> ö (SE/FI)  or  ø (DK/NO)
+//   ' position -> ä (SE/FI)  or  æ (DK/NO)
+XK2HID[KeyTable.XK_aring]        = 0x2F; // å (Swedish, Finnish, Danish, Norwegian — all at [ pos)
+XK2HID[KeyTable.XK_Aring]        = 0x2F;
+XK2HID[KeyTable.XK_adiaeresis]   = 0x34; // ä (Swedish, Finnish, German — at ' pos)
+XK2HID[KeyTable.XK_Adiaeresis]   = 0x34;
+XK2HID[KeyTable.XK_odiaeresis]   = 0x33; // ö (Swedish, Finnish, German — at ; pos)
+XK2HID[KeyTable.XK_Odiaeresis]   = 0x33;
+XK2HID[KeyTable.XK_ae]           = 0x34; // æ (Danish, Norwegian — at ' pos)
+XK2HID[KeyTable.XK_AE]           = 0x34;
+XK2HID[KeyTable.XK_oslash]       = 0x33; // ø (Danish, Norwegian — at ; pos)
+XK2HID[KeyTable.XK_Ooblique]     = 0x33;
+
+// German-specific additions.  The physical positions match Nordic on
+// most keys; ü is the exception (not present on Nordic), and ß has no
+// Nordic analogue either.
+XK2HID[KeyTable.XK_udiaeresis]   = 0x2F; // ü (German — at [ pos, same physical key Nordics use for å)
+XK2HID[KeyTable.XK_Udiaeresis]   = 0x2F;
+XK2HID[KeyTable.XK_ssharp]       = 0x2D; // ß (German — at -_ pos)
+
+// ISO-101/105 "non-US" key (the extra key between left-shift and Z on
+// ISO keyboards).  On Nordic this is <>|, on German this is <>|, on
+// UK ISO this is \|.  All produce XK_less / XK_greater / XK_bar via
+// AltGr — already mapped via the US shifted-punctuation block above —
+// but when the layout also binds an *unshifted* XK_less or an
+// AltGr-produced bar to this key, it needs its own HID scancode
+// (0x64, "Keyboard Non-US \ and |") to avoid colliding with the US
+// backslash key.  Mapping conservatively: only override if the key
+// is emitted explicitly (we keep the existing XK_less/XK_bar
+// mappings pointing at their US equivalents for broad compat).
+
 export default XK2HID;
