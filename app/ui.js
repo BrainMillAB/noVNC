@@ -1716,19 +1716,24 @@ const UI = {
      * Everything is lazy-loaded on first open so sessions that never
      * touch the OSK pay zero bundle / layout-JSON cost.
      */
-    // Layouts shipped in vendor/guacamole-osk/ (must match filenames
-    // of the *.json files).  Editable at runtime if we ship more
-    // layouts later without a rebuild.
+    // Layouts shipped in vendor/guacamole-osk/.  `id` matches the
+    // *.json filename (used in URL params, localStorage, and ansible
+    // per-BMC config).  `label` is the human-readable name shown in
+    // the in-OSK dropdown.
     _oskAvailableLayouts: [
-        'en-us-qwerty',
-        'de-de-qwertz',
-        'es-es-qwerty',
-        'fr-fr-azerty',
-        'it-it-qwerty',
-        'nl-nl-qwerty',
-        'sv-se-qwerty',
-        'tr-tr-qwerty',
+        { id: 'en-us-qwerty', label: 'English (US, QWERTY)'    },
+        { id: 'de-de-qwertz', label: 'German (QWERTZ)'         },
+        { id: 'es-es-qwerty', label: 'Spanish (ES, QWERTY)'    },
+        { id: 'fr-fr-azerty', label: 'French (AZERTY)'         },
+        { id: 'it-it-qwerty', label: 'Italian (IT, QWERTY)'    },
+        { id: 'nl-nl-qwerty', label: 'Dutch (NL, QWERTY)'      },
+        { id: 'sv-se-qwerty', label: 'Swedish (SE, QWERTY)'    },
+        { id: 'tr-tr-qwerty', label: 'Turkish (TR-Q, QWERTY)'  },
     ],
+
+    _oskKnownLayoutIds() {
+        return UI._oskAvailableLayouts.map(x => x.id);
+    },
 
     // Selection precedence (highest first):
     //   1. localStorage pref from an earlier session (user's explicit
@@ -1737,12 +1742,13 @@ const UI = {
     //      csbnet-ansible/roles/novnc_gateway/).
     //   3. 'en-us-qwerty' default.
     _oskResolveLayout() {
+        const known = UI._oskKnownLayoutIds();
         const fromStorage = WebUtil.readSetting('osk_layout', null);
-        if (fromStorage && UI._oskAvailableLayouts.indexOf(fromStorage) >= 0) {
+        if (fromStorage && known.indexOf(fromStorage) >= 0) {
             return fromStorage;
         }
         const fromUrl = WebUtil.getConfigVar('osk_layout');
-        if (fromUrl && UI._oskAvailableLayouts.indexOf(fromUrl) >= 0) {
+        if (fromUrl && known.indexOf(fromUrl) >= 0) {
             return fromUrl;
         }
         return 'en-us-qwerty';
@@ -1778,10 +1784,10 @@ const UI = {
         const sel = document.createElement('select');
         sel.id = 'noVNC_osk_layout_select';
         sel.title = 'On-screen keyboard layout';
-        for (const name of UI._oskAvailableLayouts) {
+        for (const layout of UI._oskAvailableLayouts) {
             const opt = document.createElement('option');
-            opt.value = name;
-            opt.textContent = name;
+            opt.value = layout.id;
+            opt.textContent = layout.label;
             sel.appendChild(opt);
         }
         sel.addEventListener('change', () => {
@@ -1822,12 +1828,15 @@ const UI = {
         kbdMount.id = 'noVNC_osk_keyboard';
         container.appendChild(kbdMount);
 
-        // Prevent focus steal from the VNC canvas.  The Guacamole OSK
-        // sends keysyms directly via sendKey; the overlay never needs
-        // keyboard focus.
-        container.addEventListener('mousedown', (ev) => ev.preventDefault());
-        container.addEventListener('touchstart', (ev) => ev.preventDefault(),
-                                   { passive: false });
+        // Prevent focus steal from the VNC canvas, but ONLY from the
+        // keyboard area — not from the controls bar, because its
+        // <select> and <button> elements need native mousedown /
+        // touchstart behaviour to open and click.  Guacamole OSK
+        // sends keysyms directly via sendKey on its own element, so
+        // the keyboard area never needs to receive keyboard focus.
+        kbdMount.addEventListener('mousedown', (ev) => ev.preventDefault());
+        kbdMount.addEventListener('touchstart', (ev) => ev.preventDefault(),
+                                  { passive: false });
 
         // Re-layout on viewport changes.
         window.addEventListener('resize', () => {
