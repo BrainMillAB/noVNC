@@ -2923,6 +2923,72 @@ describe('Remote Frame Buffer protocol client', function () {
             client._fbHeight = 20;
         });
 
+        describe('ATEN iKVM sendKey repeat suppression', function () {
+            // X9 BMCs count every incoming VNC KeyDown as a discrete
+            // keypress in their USB-HID emulation, so the browser's
+            // autorepeat turns single keystrokes into 4-5+ extra
+            // characters.  sendKey() dedupes adjacent down events
+            // when the matching up hasn't yet been observed.
+
+            beforeEach(function () {
+                client._rfbAtenikvm = true;
+            });
+
+            it('sends one KeyEvent for a clean down+up pair', function () {
+                client.sendKey(0x0061, 'KeyA', true);  // 'a' down
+                const firstDown = client._sock._websocket._getSentData();
+                client.sendKey(0x0061, 'KeyA', false); // 'a' up
+                const firstUp = client._sock._websocket._getSentData();
+                expect(firstDown).to.have.lengthOf(18);
+                expect(firstUp).to.have.lengthOf(18);
+                expect(firstDown[2]).to.equal(1);  // down flag
+                expect(firstUp[2]).to.equal(0);    // up flag
+            });
+
+            it('suppresses a second KeyDown for a keysym that is already held', function () {
+                client.sendKey(0x0061, 'KeyA', true);
+                const first = client._sock._websocket._getSentData();
+                expect(first).to.have.lengthOf(18);
+
+                client.sendKey(0x0061, 'KeyA', true);  // browser autorepeat
+                const second = client._sock._websocket._getSentData();
+                expect(second).to.have.lengthOf(0);   // suppressed
+
+                client.sendKey(0x0061, 'KeyA', true);  // another autorepeat
+                const third = client._sock._websocket._getSentData();
+                expect(third).to.have.lengthOf(0);    // suppressed
+            });
+
+            it('resumes sending after the up arrives', function () {
+                client.sendKey(0x0061, 'KeyA', true);
+                client._sock._websocket._getSentData();  // drain
+                client.sendKey(0x0061, 'KeyA', true);    // suppressed
+                const suppressed = client._sock._websocket._getSentData();
+                expect(suppressed).to.have.lengthOf(0);
+
+                client.sendKey(0x0061, 'KeyA', false);   // up
+                client._sock._websocket._getSentData();  // drain
+
+                client.sendKey(0x0061, 'KeyA', true);    // fresh press
+                const second = client._sock._websocket._getSentData();
+                expect(second).to.have.lengthOf(18);     // goes through
+                expect(second[2]).to.equal(1);
+            });
+
+            it('tracks each keysym independently', function () {
+                client.sendKey(0x0061, 'KeyA', true);    // 'a' down
+                client._sock._websocket._getSentData();
+                client.sendKey(0x0062, 'KeyB', true);    // 'b' down — different keysym, must pass
+                const bDown = client._sock._websocket._getSentData();
+                expect(bDown).to.have.lengthOf(18);
+                expect(bDown[2]).to.equal(1);
+
+                client.sendKey(0x0061, 'KeyA', true);    // 'a' autorepeat — suppressed
+                const aRepeat = client._sock._websocket._getSentData();
+                expect(aRepeat).to.have.lengthOf(0);
+            });
+        });
+
         describe('ATEN iKVM _handleDataRect glue', function () {
             // Both behaviours tested here are gated on _rfbAtenikvm.
             // They route standard FramebufferUpdate messages through

@@ -500,6 +500,29 @@ export default class RFB extends EventTargetMixin {
         // 18-byte KeyEvent instead.
         if (this._rfbAtenikvm) {
             if (!keysym) { return; }
+
+            // ATEN keystroke-repeat suppression.
+            //
+            // The X9 BMC treats each incoming VNC KeyDown as an
+            // independent keypress when building its USB-HID reports
+            // to the guest OS, so any browser-side keyboard autorepeat
+            // (Chrome et al. re-fire keydown every ~33 ms while the
+            // key is held) compounds with the guest's own typematic
+            // and produces runs of N extra characters from a single
+            // human keystroke.  Drop adjacent down events for the
+            // same keysym when we have not yet observed the matching
+            // up — the second+ physical press is always preceded by
+            // a keyup, so this never rejects a legitimate repeat.
+            if (!this._atenHeldKeys) {
+                this._atenHeldKeys = new Set();
+            }
+            if (down) {
+                if (this._atenHeldKeys.has(keysym)) { return; }
+                this._atenHeldKeys.add(keysym);
+            } else {
+                this._atenHeldKeys.delete(keysym);
+            }
+
             Log.Info("Sending ATEN key (" + (down ? "down" : "up") + "): keysym " + keysym);
             RFB.messages.atenKeyEvent(this._sock, keysym, down ? 1 : 0);
             return;
