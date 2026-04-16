@@ -24,6 +24,7 @@ import Cursor from "./util/cursor.js";
 import Websock from "./websock.js";
 import KeyTable from "./input/keysym.js";
 import XtScancode from "./input/xtscancodes.js";
+import ATENXK2HID from "./input/aten_hid.js";
 import { encodings } from "./encodings.js";
 import RSAAESAuthenticationState from "./ra2.js";
 import legacyCrypto from "./crypto/crypto.js";
@@ -490,6 +491,17 @@ export default class RFB extends EventTargetMixin {
         if (down === undefined) {
             this.sendKey(keysym, code, true);
             this.sendKey(keysym, code, false);
+            return;
+        }
+
+        // ATEN BMCs speak their own keyboard wire format (USB HID
+        // scancodes rather than VNC keysyms).  Skip the standard +
+        // QEMU-extended paths entirely and send the ATEN-shaped
+        // 18-byte KeyEvent instead.
+        if (this._rfbAtenikvm) {
+            if (!keysym) { return; }
+            Log.Info("Sending ATEN key (" + (down ? "down" : "up") + "): keysym " + keysym);
+            RFB.messages.atenKeyEvent(this._sock, keysym, down ? 1 : 0);
             return;
         }
 
@@ -1232,6 +1244,17 @@ export default class RFB extends EventTargetMixin {
         // Highest bit in mask is never sent to the server
         if (mask & 0x8000) {
             throw new Error("Illegal mouse button mask (mask: " + mask + ")");
+        }
+
+        // ATEN BMCs use an 18-byte PointerEvent payload instead of the
+        // standard 6-byte one; the msg-type stays 5 but the rest of the
+        // wire layout differs.  ATEN does not implement the extended-
+        // pointer-event pseudo-encoding, so the branch below is the
+        // only path taken for ATEN sessions.
+        if (this._rfbAtenikvm) {
+            RFB.messages.atenPointerEvent(this._sock, this._display.absX(x),
+                                          this._display.absY(y), mask);
+            return;
         }
 
         let extendedMouseButtons = mask & 0x7f80;
@@ -3331,6 +3354,62 @@ RFB.messages = {
         sock.sQpush16(y);
         sock.sQpush8(higherBits);
 
+        sock.flush();
+    },
+
+    // ATEN iKVM KeyEvent: 18 bytes.  Same msg-type (4) as the standard
+    // RFB KeyEvent but a completely different payload — the usual
+    // 32-bit keysym is replaced by a 32-bit USB HID scancode, with
+    // additional per-ATEN padding around it.
+    //
+    //   offset  value
+    //     0     u8  msg-type     = 4
+    //     1     u8  pad          = 0
+    //     2     u8  down         (1 = press, 0 = release)
+    //     3-4   u16 pad          = 0
+    //     5-8   u32 HID scancode (ATENXK2HID[keysym], big-endian)
+    //     9-17  9 × u8 pad       = 0
+    //
+    // Unknown keysyms translate to HID scancode `undefined`, which
+    // writes the scancode bytes as NaN; the caller in sendKey() above
+    // filters out !keysym before invoking this function but does not
+    // validate presence in the lookup table.  An unknown keysym is
+    // therefore sent as zero-filled scancode bytes — ATEN firmware
+    // treats that as a no-op.
+    atenKeyEvent(sock, keysym, down) {
+        const hid = ATENXK2HID[keysym] | 0;  // coerce undefined to 0
+
+        sock.sQpush8(4);                 // msg-type
+        sock.sQpush8(0);                 // pad
+        sock.sQpush8(down);
+        sock.sQpush16(0);                // pad
+        sock.sQpush32(hid);              // HID scancode
+        for (let i = 0; i < 9; ++i) {
+            sock.sQpush8(0);             // pad
+        }
+        sock.flush();
+    },
+
+    // ATEN iKVM PointerEvent: 18 bytes.  Same msg-type (5) as the
+    // standard RFB PointerEvent but inserts a pad byte before the
+    // button mask and adds 11 bytes of trailing padding.
+    //
+    //   offset  value
+    //     0     u8  msg-type = 5
+    //     1     u8  pad      = 0
+    //     2     u8  button mask (lo 7 bits; no marker bit)
+    //     3-4   u16 x (big-endian)
+    //     5-6   u16 y (big-endian)
+    //     7-17  11 × u8 pad  = 0
+    atenPointerEvent(sock, x, y, mask) {
+        sock.sQpush8(5);                 // msg-type
+        sock.sQpush8(0);                 // pad
+        sock.sQpush8(mask & 0x7f);       // button mask, no marker bit
+        sock.sQpush16(x);
+        sock.sQpush16(y);
+        for (let i = 0; i < 11; ++i) {
+            sock.sQpush8(0);             // pad
+        }
         sock.flush();
     },
 
