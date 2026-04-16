@@ -1716,12 +1716,47 @@ const UI = {
      * Everything is lazy-loaded on first open so sessions that never
      * touch the OSK pay zero bundle / layout-JSON cost.
      */
+    // Layouts shipped in vendor/guacamole-osk/ (must match filenames
+    // of the *.json files).  Editable at runtime if we ship more
+    // layouts later without a rebuild.
+    _oskAvailableLayouts: [
+        'en-us-qwerty',
+        'de-de-qwertz',
+        'es-es-qwerty',
+        'fr-fr-azerty',
+        'it-it-qwerty',
+        'nl-nl-qwerty',
+        'sv-se-qwerty',
+        'tr-tr-qwerty',
+    ],
+
+    // Selection precedence (highest first):
+    //   1. localStorage pref from an earlier session (user's explicit
+    //      pick via the dropdown).
+    //   2. &osk_layout= URL param (set by ansible per-BMC, see
+    //      csbnet-ansible/roles/novnc_gateway/).
+    //   3. 'en-us-qwerty' default.
+    _oskResolveLayout() {
+        const fromStorage = WebUtil.readSetting('osk_layout', null);
+        if (fromStorage && UI._oskAvailableLayouts.indexOf(fromStorage) >= 0) {
+            return fromStorage;
+        }
+        const fromUrl = WebUtil.getConfigVar('osk_layout');
+        if (fromUrl && UI._oskAvailableLayouts.indexOf(fromUrl) >= 0) {
+            return fromUrl;
+        }
+        return 'en-us-qwerty';
+    },
+
     // The OSK is width-driven — Guacamole scales key height
     // proportionally to the width passed to resize().  Capping prevents
     // the keyboard from eating huge vertical real estate on wide
     // monitors.  Default target width is tuned for "fits in the lower
     // strip of the viewport without obscuring much of the console."
     _oskTargetWidth(container) {
+        if (UI._oskCurrentWidth != null) { return UI._oskCurrentWidth; }
+        const saved = parseInt(WebUtil.readSetting('osk_width', '0'), 10);
+        if (saved > 100) { return saved; }
         const override = parseInt(WebUtil.getConfigVar('osk_width', '0'), 10);
         if (override > 100) { return override; }
         // Conservative default: stay under 900 px regardless of how
@@ -1730,13 +1765,83 @@ const UI = {
         return Math.min(container.offsetWidth, 900);
     },
 
-    async initOsk() {
-        if (UI._oskInstance) { return UI._oskInstance; }
+    // Build the small controls bar at the top of the OSK overlay:
+    // layout dropdown, shrink, grow, close.  Only constructed once,
+    // on first toggle.
+    _oskBuildControls() {
+        const container = document.getElementById('noVNC_osk_container');
+        if (container.querySelector('.noVNC_osk_controls')) { return; }
 
-        const layoutName = WebUtil.getConfigVar('osk_layout', 'en-us-qwerty');
+        const header = document.createElement('div');
+        header.className = 'noVNC_osk_controls';
 
-        // Dynamic imports so clients that never open the OSK never
-        // fetch 25-30 KB of module + layout JSON.
+        const sel = document.createElement('select');
+        sel.id = 'noVNC_osk_layout_select';
+        sel.title = 'On-screen keyboard layout';
+        for (const name of UI._oskAvailableLayouts) {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            sel.appendChild(opt);
+        }
+        sel.addEventListener('change', () => {
+            UI._oskChangeLayout(sel.value).catch(
+                (err) => Log.Error('OSK layout switch failed: ' + err));
+        });
+        header.appendChild(sel);
+
+        const shrink = document.createElement('button');
+        shrink.className = 'noVNC_osk_size_btn';
+        shrink.type = 'button';
+        shrink.textContent = '\u2212'; // minus sign
+        shrink.title = 'Shrink keyboard';
+        shrink.addEventListener('click', () => UI._oskAdjustSize(-100));
+        header.appendChild(shrink);
+
+        const grow = document.createElement('button');
+        grow.className = 'noVNC_osk_size_btn';
+        grow.type = 'button';
+        grow.textContent = '+';
+        grow.title = 'Grow keyboard';
+        grow.addEventListener('click', () => UI._oskAdjustSize(+100));
+        header.appendChild(grow);
+
+        const close = document.createElement('button');
+        close.className = 'noVNC_osk_close_btn';
+        close.type = 'button';
+        close.textContent = '\u00D7'; // ×
+        close.title = 'Hide keyboard';
+        close.addEventListener('click', () => UI.toggleOsk());
+        header.appendChild(close);
+
+        container.appendChild(header);
+
+        // The Guacamole OSK element gets re-parented under this mount
+        // on every layout change, so the controls bar stays put.
+        const kbdMount = document.createElement('div');
+        kbdMount.id = 'noVNC_osk_keyboard';
+        container.appendChild(kbdMount);
+
+        // Prevent focus steal from the VNC canvas.  The Guacamole OSK
+        // sends keysyms directly via sendKey; the overlay never needs
+        // keyboard focus.
+        container.addEventListener('mousedown', (ev) => ev.preventDefault());
+        container.addEventListener('touchstart', (ev) => ev.preventDefault(),
+                                   { passive: false });
+
+        // Re-layout on viewport changes.
+        window.addEventListener('resize', () => {
+            if (!container.classList.contains('noVNC_osk_hidden') &&
+                UI._oskInstance) {
+                UI._oskInstance.resize(UI._oskTargetWidth(container));
+            }
+        });
+    },
+
+    // Fetch a layout JSON, build a fresh Guacamole OSK instance, wire
+    // keysym callbacks, mount under #noVNC_osk_keyboard, and resize.
+    // Called both on initial open and on every dropdown change.
+    async _oskBuild(layoutName) {
         const moduleUrl = new URL('../vendor/guacamole-osk/OnScreenKeyboard.js',
                                   import.meta.url);
         const layoutUrl = new URL('../vendor/guacamole-osk/' + layoutName + '.json',
@@ -1747,7 +1852,7 @@ const UI = {
             fetch(layoutUrl).then(r => {
                 if (!r.ok) {
                     throw new Error('OSK layout fetch failed: ' + layoutUrl +
-                                    ' (' + r.status + ')');
+                                    ' (HTTP ' + r.status + ')');
                 }
                 return r.json();
             }),
@@ -1766,26 +1871,37 @@ const UI = {
         };
 
         const container = document.getElementById('noVNC_osk_container');
-        container.appendChild(osk.getElement());
+        const kbdMount  = document.getElementById('noVNC_osk_keyboard');
+        kbdMount.replaceChildren(osk.getElement());
         osk.resize(UI._oskTargetWidth(container));
 
-        // Prevent the canvas from stealing focus when the user
-        // interacts with the OSK.  Guacamole OSK dispatches logical
-        // key events directly via sendKey, so we never want the
-        // container to receive keyboard focus.
-        container.addEventListener('mousedown', (ev) => ev.preventDefault());
-        container.addEventListener('touchstart', (ev) => ev.preventDefault(),
-                                   { passive: false });
-
-        // Re-layout on viewport changes.
-        window.addEventListener('resize', () => {
-            if (!container.classList.contains('noVNC_osk_hidden')) {
-                osk.resize(UI._oskTargetWidth(container));
-            }
-        });
-
         UI._oskInstance = osk;
-        return osk;
+        UI._oskCurrentLayoutName = layoutName;
+
+        const sel = document.getElementById('noVNC_osk_layout_select');
+        if (sel) { sel.value = layoutName; }
+    },
+
+    async _oskChangeLayout(layoutName) {
+        if (layoutName === UI._oskCurrentLayoutName) { return; }
+        await UI._oskBuild(layoutName);
+        try { WebUtil.writeSetting('osk_layout', layoutName); } catch (_e) { /* private-mode */ }
+    },
+
+    _oskAdjustSize(deltaPx) {
+        const container = document.getElementById('noVNC_osk_container');
+        const current = UI._oskTargetWidth(container);
+        const next = Math.max(300, Math.min(1400, current + deltaPx));
+        UI._oskCurrentWidth = next;
+        try { WebUtil.writeSetting('osk_width', String(next)); } catch (_e) { /* private-mode */ }
+        if (UI._oskInstance) { UI._oskInstance.resize(next); }
+    },
+
+    async initOsk() {
+        if (UI._oskInstance) { return UI._oskInstance; }
+        UI._oskBuildControls();
+        await UI._oskBuild(UI._oskResolveLayout());
+        return UI._oskInstance;
     },
 
     async toggleOsk() {

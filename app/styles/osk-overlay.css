@@ -35,10 +35,66 @@
     display: none;
 }
 
+/* Controls bar at the top of the OSK overlay: layout dropdown,
+   shrink/grow size buttons, close.  Compact so it doesn't steal
+   much vertical space from the keyboard itself. */
+#noVNC_osk_container .noVNC_osk_controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 6px;
+    background: rgba(20, 20, 20, 0.7);
+    border-radius: 3px;
+    margin-bottom: 4px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 12px;
+}
+
+#noVNC_osk_container .noVNC_osk_controls > select {
+    flex: 0 1 auto;
+    min-width: 140px;
+    background: #333;
+    color: #eee;
+    border: 1px solid #555;
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+#noVNC_osk_container .noVNC_osk_controls > button {
+    flex: 0 0 auto;
+    width: 28px;
+    height: 24px;
+    background: #444;
+    color: #eee;
+    border: 1px solid #555;
+    border-radius: 3px;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+}
+
+#noVNC_osk_container .noVNC_osk_controls > button:hover {
+    background: #555;
+}
+
+/* Push the close button to the far right of the controls bar. */
+#noVNC_osk_container .noVNC_osk_controls > .noVNC_osk_close_btn {
+    margin-left: auto;
+}
+
+/* Mount point for the actual Guacamole-rendered keyboard.  The
+   Guacamole OSK element is inserted here on every layout change. */
+#noVNC_osk_container #noVNC_osk_keyboard {
+    width: 100%;
+}
+
 /* The Guacamole keyboard auto-sizes its keys to fill the container
    width.  A small bottom gutter keeps the keys off the absolute
    bottom edge on touch devices (where the viewport may shift). */
-#noVNC_osk_container > .guac-keyboard {
+#noVNC_osk_container #noVNC_osk_keyboard > .guac-keyboard {
     margin-bottom: env(safe-area-inset-bottom, 0);
 }
 
