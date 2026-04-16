@@ -160,12 +160,12 @@
         "section": [
             {
                 "title": "§",
-                "keysym": 167,
+                "keysym": 96,
                 "requires": []
             },
             {
                 "title": "½",
-                "keysym": 189,
+                "keysym": 96,
                 "requires": [
                     "shift"
                 ]
@@ -174,10 +174,12 @@
         "1": [
             {
                 "title": "1",
+                "keysym": 49,
                 "requires": []
             },
             {
                 "title": "!",
+                "keysym": 49,
                 "requires": [
                     "shift"
                 ]
@@ -186,17 +188,19 @@
         "2": [
             {
                 "title": "2",
+                "keysym": 50,
                 "requires": []
             },
             {
                 "title": "\"",
+                "keysym": 50,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "@",
-                "keysym": 64,
+                "keysym": 50,
                 "requires": [
                     "alt-gr"
                 ]
@@ -205,17 +209,19 @@
         "3": [
             {
                 "title": "3",
+                "keysym": 51,
                 "requires": []
             },
             {
                 "title": "#",
+                "keysym": 51,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "£",
-                "keysym": 163,
+                "keysym": 51,
                 "requires": [
                     "alt-gr"
                 ]
@@ -224,12 +230,12 @@
         "4": [
             {
                 "title": "¤",
-                "keysym": 164,
+                "keysym": 52,
                 "requires": []
             },
             {
                 "title": "$",
-                "keysym": 36,
+                "keysym": 52,
                 "requires": [
                     "shift"
                 ]
@@ -238,17 +244,19 @@
         "5": [
             {
                 "title": "5",
+                "keysym": 53,
                 "requires": []
             },
             {
                 "title": "%",
+                "keysym": 53,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "€",
-                "keysym": 8364,
+                "keysym": 53,
                 "requires": [
                     "alt-gr"
                 ]
@@ -257,10 +265,12 @@
         "6": [
             {
                 "title": "6",
+                "keysym": 54,
                 "requires": []
             },
             {
                 "title": "&",
+                "keysym": 54,
                 "requires": [
                     "shift"
                 ]
@@ -269,16 +279,19 @@
         "7": [
             {
                 "title": "7",
+                "keysym": 55,
                 "requires": []
             },
             {
                 "title": "/",
+                "keysym": 55,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "{",
+                "keysym": 55,
                 "requires": [
                     "alt-gr"
                 ]
@@ -287,16 +300,19 @@
         "8": [
             {
                 "title": "8",
+                "keysym": 56,
                 "requires": []
             },
             {
                 "title": "(",
+                "keysym": 56,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "[",
+                "keysym": 56,
                 "requires": [
                     "alt-gr"
                 ]
@@ -305,16 +321,19 @@
         "9": [
             {
                 "title": "9",
+                "keysym": 57,
                 "requires": []
             },
             {
                 "title": ")",
+                "keysym": 57,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "]",
+                "keysym": 57,
                 "requires": [
                     "alt-gr"
                 ]
@@ -323,16 +342,19 @@
         "0": [
             {
                 "title": "0",
+                "keysym": 48,
                 "requires": []
             },
             {
                 "title": "=",
+                "keysym": 48,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "}",
+                "keysym": 48,
                 "requires": [
                     "alt-gr"
                 ]
@@ -341,16 +363,19 @@
         "plus": [
             {
                 "title": "+",
+                "keysym": 45,
                 "requires": []
             },
             {
                 "title": "?",
+                "keysym": 45,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "\\",
+                "keysym": 45,
                 "requires": [
                     "alt-gr"
                 ]
@@ -359,12 +384,12 @@
         "acute": [
             {
                 "title": "´",
-                "keysym": 180,
+                "keysym": 61,
                 "requires": []
             },
             {
                 "title": "`",
-                "keysym": 96,
+                "keysym": 61,
                 "requires": [
                     "shift"
                 ]
@@ -373,22 +398,26 @@
         "q": [
             {
                 "title": "q",
+                "keysym": 113,
                 "requires": []
             },
             {
                 "title": "Q",
+                "keysym": 113,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "Q",
+                "keysym": 113,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "q",
+                "keysym": 113,
                 "requires": [
                     "caps",
                     "shift"
@@ -398,22 +427,26 @@
         "w": [
             {
                 "title": "w",
+                "keysym": 119,
                 "requires": []
             },
             {
                 "title": "W",
+                "keysym": 119,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "W",
+                "keysym": 119,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "w",
+                "keysym": 119,
                 "requires": [
                     "caps",
                     "shift"
@@ -423,22 +456,26 @@
         "e": [
             {
                 "title": "e",
+                "keysym": 101,
                 "requires": []
             },
             {
                 "title": "E",
+                "keysym": 101,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "E",
+                "keysym": 101,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "e",
+                "keysym": 101,
                 "requires": [
                     "caps",
                     "shift"
@@ -446,7 +483,7 @@
             },
             {
                 "title": "€",
-                "keysym": 8364,
+                "keysym": 101,
                 "requires": [
                     "alt-gr"
                 ]
@@ -455,22 +492,26 @@
         "r": [
             {
                 "title": "r",
+                "keysym": 114,
                 "requires": []
             },
             {
                 "title": "R",
+                "keysym": 114,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "R",
+                "keysym": 114,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "r",
+                "keysym": 114,
                 "requires": [
                     "caps",
                     "shift"
@@ -480,22 +521,26 @@
         "t": [
             {
                 "title": "t",
+                "keysym": 116,
                 "requires": []
             },
             {
                 "title": "T",
+                "keysym": 116,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "T",
+                "keysym": 116,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "t",
+                "keysym": 116,
                 "requires": [
                     "caps",
                     "shift"
@@ -505,22 +550,26 @@
         "y": [
             {
                 "title": "y",
+                "keysym": 121,
                 "requires": []
             },
             {
                 "title": "Y",
+                "keysym": 121,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "Y",
+                "keysym": 121,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "y",
+                "keysym": 121,
                 "requires": [
                     "caps",
                     "shift"
@@ -530,22 +579,26 @@
         "u": [
             {
                 "title": "u",
+                "keysym": 117,
                 "requires": []
             },
             {
                 "title": "U",
+                "keysym": 117,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "U",
+                "keysym": 117,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "u",
+                "keysym": 117,
                 "requires": [
                     "caps",
                     "shift"
@@ -555,22 +608,26 @@
         "i": [
             {
                 "title": "i",
+                "keysym": 105,
                 "requires": []
             },
             {
                 "title": "I",
+                "keysym": 105,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "I",
+                "keysym": 105,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "i",
+                "keysym": 105,
                 "requires": [
                     "caps",
                     "shift"
@@ -580,22 +637,26 @@
         "o": [
             {
                 "title": "o",
+                "keysym": 111,
                 "requires": []
             },
             {
                 "title": "O",
+                "keysym": 111,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "O",
+                "keysym": 111,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "o",
+                "keysym": 111,
                 "requires": [
                     "caps",
                     "shift"
@@ -605,22 +666,26 @@
         "p": [
             {
                 "title": "p",
+                "keysym": 112,
                 "requires": []
             },
             {
                 "title": "P",
+                "keysym": 112,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "P",
+                "keysym": 112,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "p",
+                "keysym": 112,
                 "requires": [
                     "caps",
                     "shift"
@@ -635,14 +700,14 @@
             },
             {
                 "title": "Å",
-                "keysym": 197,
+                "keysym": 229,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "Å",
-                "keysym": 197,
+                "keysym": 229,
                 "requires": [
                     "shift"
                 ]
@@ -659,19 +724,19 @@
         "diaeresis": [
             {
                 "title": "¨",
-                "keysym": 168,
+                "keysym": 93,
                 "requires": []
             },
             {
                 "title": "^",
-                "keysym": 94,
+                "keysym": 93,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "~",
-                "keysym": 126,
+                "keysym": 93,
                 "requires": [
                     "alt-gr"
                 ]
@@ -680,22 +745,26 @@
         "a": [
             {
                 "title": "a",
+                "keysym": 97,
                 "requires": []
             },
             {
                 "title": "A",
+                "keysym": 97,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "A",
+                "keysym": 97,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "a",
+                "keysym": 97,
                 "requires": [
                     "caps",
                     "shift"
@@ -705,22 +774,26 @@
         "s": [
             {
                 "title": "s",
+                "keysym": 115,
                 "requires": []
             },
             {
                 "title": "S",
+                "keysym": 115,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "S",
+                "keysym": 115,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "s",
+                "keysym": 115,
                 "requires": [
                     "caps",
                     "shift"
@@ -730,22 +803,26 @@
         "d": [
             {
                 "title": "d",
+                "keysym": 100,
                 "requires": []
             },
             {
                 "title": "D",
+                "keysym": 100,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "D",
+                "keysym": 100,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "d",
+                "keysym": 100,
                 "requires": [
                     "caps",
                     "shift"
@@ -755,22 +832,26 @@
         "f": [
             {
                 "title": "f",
+                "keysym": 102,
                 "requires": []
             },
             {
                 "title": "F",
+                "keysym": 102,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "F",
+                "keysym": 102,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "f",
+                "keysym": 102,
                 "requires": [
                     "caps",
                     "shift"
@@ -780,22 +861,26 @@
         "g": [
             {
                 "title": "g",
+                "keysym": 103,
                 "requires": []
             },
             {
                 "title": "G",
+                "keysym": 103,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "G",
+                "keysym": 103,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "g",
+                "keysym": 103,
                 "requires": [
                     "caps",
                     "shift"
@@ -805,22 +890,26 @@
         "h": [
             {
                 "title": "h",
+                "keysym": 104,
                 "requires": []
             },
             {
                 "title": "H",
+                "keysym": 104,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "H",
+                "keysym": 104,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "h",
+                "keysym": 104,
                 "requires": [
                     "caps",
                     "shift"
@@ -830,22 +919,26 @@
         "j": [
             {
                 "title": "j",
+                "keysym": 106,
                 "requires": []
             },
             {
                 "title": "J",
+                "keysym": 106,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "J",
+                "keysym": 106,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "j",
+                "keysym": 106,
                 "requires": [
                     "caps",
                     "shift"
@@ -855,22 +948,26 @@
         "k": [
             {
                 "title": "k",
+                "keysym": 107,
                 "requires": []
             },
             {
                 "title": "K",
+                "keysym": 107,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "K",
+                "keysym": 107,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "k",
+                "keysym": 107,
                 "requires": [
                     "caps",
                     "shift"
@@ -880,22 +977,26 @@
         "l": [
             {
                 "title": "l",
+                "keysym": 108,
                 "requires": []
             },
             {
                 "title": "L",
+                "keysym": 108,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "L",
+                "keysym": 108,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "l",
+                "keysym": 108,
                 "requires": [
                     "caps",
                     "shift"
@@ -910,14 +1011,14 @@
             },
             {
                 "title": "Ö",
-                "keysym": 214,
+                "keysym": 246,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "Ö",
-                "keysym": 214,
+                "keysym": 246,
                 "requires": [
                     "shift"
                 ]
@@ -939,14 +1040,14 @@
             },
             {
                 "title": "Ä",
-                "keysym": 196,
+                "keysym": 228,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "Ä",
-                "keysym": 196,
+                "keysym": 228,
                 "requires": [
                     "shift"
                 ]
@@ -963,52 +1064,40 @@
         "apostrophe": [
             {
                 "title": "'",
+                "keysym": 92,
                 "requires": []
             },
             {
                 "title": "*",
+                "keysym": 92,
                 "requires": [
                     "shift"
-                ]
-            }
-        ],
-        "less": [
-            {
-                "title": "<",
-                "requires": []
-            },
-            {
-                "title": ">",
-                "requires": [
-                    "shift"
-                ]
-            },
-            {
-                "title": "|",
-                "requires": [
-                    "alt-gr"
                 ]
             }
         ],
         "z": [
             {
                 "title": "z",
+                "keysym": 122,
                 "requires": []
             },
             {
                 "title": "Z",
+                "keysym": 122,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "Z",
+                "keysym": 122,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "z",
+                "keysym": 122,
                 "requires": [
                     "caps",
                     "shift"
@@ -1018,22 +1107,26 @@
         "x": [
             {
                 "title": "x",
+                "keysym": 120,
                 "requires": []
             },
             {
                 "title": "X",
+                "keysym": 120,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "X",
+                "keysym": 120,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "x",
+                "keysym": 120,
                 "requires": [
                     "caps",
                     "shift"
@@ -1043,22 +1136,26 @@
         "c": [
             {
                 "title": "c",
+                "keysym": 99,
                 "requires": []
             },
             {
                 "title": "C",
+                "keysym": 99,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "C",
+                "keysym": 99,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "c",
+                "keysym": 99,
                 "requires": [
                     "caps",
                     "shift"
@@ -1068,22 +1165,26 @@
         "v": [
             {
                 "title": "v",
+                "keysym": 118,
                 "requires": []
             },
             {
                 "title": "V",
+                "keysym": 118,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "V",
+                "keysym": 118,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "v",
+                "keysym": 118,
                 "requires": [
                     "caps",
                     "shift"
@@ -1093,22 +1194,26 @@
         "b": [
             {
                 "title": "b",
+                "keysym": 98,
                 "requires": []
             },
             {
                 "title": "B",
+                "keysym": 98,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "B",
+                "keysym": 98,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "b",
+                "keysym": 98,
                 "requires": [
                     "caps",
                     "shift"
@@ -1118,22 +1223,26 @@
         "n": [
             {
                 "title": "n",
+                "keysym": 110,
                 "requires": []
             },
             {
                 "title": "N",
+                "keysym": 110,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "N",
+                "keysym": 110,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "n",
+                "keysym": 110,
                 "requires": [
                     "caps",
                     "shift"
@@ -1143,22 +1252,26 @@
         "m": [
             {
                 "title": "m",
+                "keysym": 109,
                 "requires": []
             },
             {
                 "title": "M",
+                "keysym": 109,
                 "requires": [
                     "caps"
                 ]
             },
             {
                 "title": "M",
+                "keysym": 109,
                 "requires": [
                     "shift"
                 ]
             },
             {
                 "title": "m",
+                "keysym": 109,
                 "requires": [
                     "caps",
                     "shift"
@@ -1166,7 +1279,7 @@
             },
             {
                 "title": "µ",
-                "keysym": 181,
+                "keysym": 109,
                 "requires": [
                     "alt-gr"
                 ]
@@ -1175,10 +1288,12 @@
         ",": [
             {
                 "title": ",",
+                "keysym": 44,
                 "requires": []
             },
             {
                 "title": ";",
+                "keysym": 44,
                 "requires": [
                     "shift"
                 ]
@@ -1187,10 +1302,12 @@
         ".": [
             {
                 "title": ".",
+                "keysym": 46,
                 "requires": []
             },
             {
                 "title": ":",
+                "keysym": 46,
                 "requires": [
                     "shift"
                 ]
@@ -1199,10 +1316,12 @@
         "-": [
             {
                 "title": "-",
+                "keysym": 47,
                 "requires": []
             },
             {
                 "title": "_",
+                "keysym": 47,
                 "requires": [
                     "shift"
                 ]
@@ -1285,7 +1404,6 @@
                     ],
                     [
                         "LShift",
-                        "less",
                         "z",
                         "x",
                         "c",
@@ -1340,7 +1458,7 @@
         "Caps": 1.75,
         "Enter": 1.25,
         "LShift": 2,
-        "RShift": 2.1,
+        "RShift": 3,
         "LCtrl": 1.6,
         "Meta": 1.6,
         "LAlt": 1.6,

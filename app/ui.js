@@ -1842,7 +1842,7 @@ const UI = {
         window.addEventListener('resize', () => {
             if (!container.classList.contains('noVNC_osk_hidden') &&
                 UI._oskInstance) {
-                UI._oskInstance.resize(UI._oskTargetWidth(container));
+                UI._oskApplyWidth(UI._oskTargetWidth(container));
             }
         });
     },
@@ -1882,10 +1882,9 @@ const UI = {
         const container = document.getElementById('noVNC_osk_container');
         const kbdMount  = document.getElementById('noVNC_osk_keyboard');
         kbdMount.replaceChildren(osk.getElement());
-        osk.resize(UI._oskTargetWidth(container));
-
         UI._oskInstance = osk;
         UI._oskCurrentLayoutName = layoutName;
+        UI._oskApplyWidth(UI._oskTargetWidth(container));
 
         const sel = document.getElementById('noVNC_osk_layout_select');
         if (sel) { sel.value = layoutName; }
@@ -1897,13 +1896,23 @@ const UI = {
         try { WebUtil.writeSetting('osk_layout', layoutName); } catch (_e) { /* private-mode */ }
     },
 
+    // Set both the container's CSS width AND the Guacamole OSK's
+    // internal sizing so the container tracks the keyboard's actual
+    // rendered width — otherwise the movement cluster (arrows etc.)
+    // drifts further from the main keyboard block as it shrinks.
+    _oskApplyWidth(width) {
+        const container = document.getElementById('noVNC_osk_container');
+        container.style.width = width + 'px';
+        if (UI._oskInstance) { UI._oskInstance.resize(width); }
+    },
+
     _oskAdjustSize(deltaPx) {
         const container = document.getElementById('noVNC_osk_container');
         const current = UI._oskTargetWidth(container);
         const next = Math.max(300, Math.min(1400, current + deltaPx));
         UI._oskCurrentWidth = next;
         try { WebUtil.writeSetting('osk_width', String(next)); } catch (_e) { /* private-mode */ }
-        if (UI._oskInstance) { UI._oskInstance.resize(next); }
+        UI._oskApplyWidth(next);
     },
 
     async initOsk() {
@@ -1918,10 +1927,10 @@ const UI = {
         const button    = document.getElementById('noVNC_toggle_osk_button');
         if (container.classList.contains('noVNC_osk_hidden')) {
             try {
-                const osk = await UI.initOsk();
+                await UI.initOsk();
                 container.classList.remove('noVNC_osk_hidden');
                 button.classList.add('noVNC_selected');
-                osk.resize(UI._oskTargetWidth(container));
+                UI._oskApplyWidth(UI._oskTargetWidth(container));
             } catch (err) {
                 Log.Error('Failed to initialise on-screen keyboard: ' + err);
             }
