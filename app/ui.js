@@ -1771,6 +1771,103 @@ const UI = {
         return Math.min(container.offsetWidth, 900);
     },
 
+    // Install the drag handler on the OSK container.  Only the bare
+    // padding around the keyboard acts as the grab handle — clicks
+    // on keys, controls, and the keyboard-mount div all bubble to
+    // the container but have a different event.target, so the check
+    // `event.target === container` singles out "clicked on the grey
+    // backdrop" and starts a drag.  Persists position in localStorage.
+    _oskInstallDragHandle() {
+        const container = document.getElementById('noVNC_osk_container');
+        const state = { active: false, offX: 0, offY: 0 };
+
+        const applyAbsolutePosition = (rect) => {
+            // Switch from the default `bottom: 0; left/right/margin:
+            // auto` centering to explicit left/top coordinates so we
+            // can freely reposition.
+            container.style.left   = rect.left + 'px';
+            container.style.top    = rect.top + 'px';
+            container.style.right  = 'auto';
+            container.style.bottom = 'auto';
+            container.style.margin = '0';
+        };
+
+        const clamp = (x, y) => {
+            const maxX = Math.max(0, window.innerWidth  - container.offsetWidth);
+            const maxY = Math.max(0, window.innerHeight - container.offsetHeight);
+            return {
+                x: Math.max(0, Math.min(maxX, x)),
+                y: Math.max(0, Math.min(maxY, y)),
+            };
+        };
+
+        const start = (clientX, clientY) => {
+            const rect = container.getBoundingClientRect();
+            state.active = true;
+            state.offX = clientX - rect.left;
+            state.offY = clientY - rect.top;
+            applyAbsolutePosition(rect);
+            container.classList.add('noVNC_osk_dragging');
+        };
+
+        const move = (clientX, clientY) => {
+            if (!state.active) { return; }
+            const { x, y } = clamp(clientX - state.offX, clientY - state.offY);
+            container.style.left = x + 'px';
+            container.style.top  = y + 'px';
+        };
+
+        const end = () => {
+            if (!state.active) { return; }
+            state.active = false;
+            container.classList.remove('noVNC_osk_dragging');
+            try {
+                WebUtil.writeSetting('osk_left', container.style.left);
+                WebUtil.writeSetting('osk_top',  container.style.top);
+            } catch (_e) { /* private-mode */ }
+        };
+
+        // Mouse
+        container.addEventListener('mousedown', (ev) => {
+            if (ev.target !== container) { return; }
+            ev.preventDefault();
+            start(ev.clientX, ev.clientY);
+        });
+        window.addEventListener('mousemove', (ev) => move(ev.clientX, ev.clientY));
+        window.addEventListener('mouseup', end);
+
+        // Touch
+        container.addEventListener('touchstart', (ev) => {
+            if (ev.target !== container) { return; }
+            if (ev.touches.length !== 1) { return; }
+            ev.preventDefault();
+            const t = ev.touches[0];
+            start(t.clientX, t.clientY);
+        }, { passive: false });
+        window.addEventListener('touchmove', (ev) => {
+            if (!state.active || ev.touches.length !== 1) { return; }
+            const t = ev.touches[0];
+            move(t.clientX, t.clientY);
+        }, { passive: true });
+        window.addEventListener('touchend',    end);
+        window.addEventListener('touchcancel', end);
+
+        // Restore saved position on construction.
+        const savedLeft = WebUtil.readSetting('osk_left', null);
+        const savedTop  = WebUtil.readSetting('osk_top',  null);
+        if (savedLeft && savedTop) {
+            const leftPx = parseInt(savedLeft, 10);
+            const topPx  = parseInt(savedTop, 10);
+            if (Number.isFinite(leftPx) && Number.isFinite(topPx)) {
+                applyAbsolutePosition({ left: leftPx, top: topPx });
+                // Clamp in case viewport shrank since last session.
+                const { x, y } = clamp(leftPx, topPx);
+                container.style.left = x + 'px';
+                container.style.top  = y + 'px';
+            }
+        }
+    },
+
     // Build the small controls bar at the top of the OSK overlay:
     // layout dropdown, shrink, grow, close.  Only constructed once,
     // on first toggle.
@@ -1918,6 +2015,7 @@ const UI = {
     async initOsk() {
         if (UI._oskInstance) { return UI._oskInstance; }
         UI._oskBuildControls();
+        UI._oskInstallDragHandle();
         await UI._oskBuild(UI._oskResolveLayout());
         return UI._oskInstance;
     },

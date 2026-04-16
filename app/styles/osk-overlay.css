@@ -29,6 +29,15 @@
     user-select: none;
     -webkit-user-select: none;
     touch-action: manipulation;
+    /* Grab cursor hints the backdrop padding is draggable. Children
+       (keys / buttons / select) override with their own cursors. */
+    cursor: grab;
+}
+
+#noVNC_osk_container.noVNC_osk_dragging {
+    cursor: grabbing;
+    /* Guacamole's OSK transitions would lag behind fast drags. */
+    transition: none;
 }
 
 #noVNC_osk_container.noVNC_osk_hidden {
