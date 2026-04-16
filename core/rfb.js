@@ -2107,7 +2107,15 @@ export default class RFB extends EventTargetMixin {
             return false;
         }
 
-        if (this._sock.rQwait("ATEN auth padding", 16)) { return false; }
+        // Pre-auth filler: the fork called out 16 bytes here, but
+        // against real Supermicro X9 BMCs the server actually sends 20
+        // bytes of pre-auth filler following numTunnels (total 24-byte
+        // block after security-type selection).  Empirically verified
+        // 2026-04-16 against prod-claude-ipmi: reading only 16 leaves
+        // 4 bytes in the queue that later pollute _handleSecurityResult's
+        // rQshift32, causing spurious auth-rejections on what was
+        // actually a 0x00000000 SecurityResult success.
+        if (this._sock.rQwait("ATEN auth padding", 20)) { return false; }
 
         // ATEN masquerades as Tight for the security-type hello only;
         // the post-auth ServerInit does NOT carry the TightVNC extended
@@ -2116,9 +2124,10 @@ export default class RFB extends EventTargetMixin {
         // extension after the desktop name).
         this._rfbTightVNC = false;
 
-        // The next 16 bytes are server-emitted filler that ATEN ignores
-        // (original kelleyk fork calls them the "mysteryFlag" region).
-        this._sock.rQskipBytes(16);
+        // The next 20 bytes are server-emitted filler that ATEN ignores
+        // (original kelleyk fork called them the "mysteryFlag" region
+        // and skipped only 16 — see rQwait comment above).
+        this._sock.rQskipBytes(20);
 
         const user = this._rfbCredentials.username;
         const pass = this._rfbCredentials.password;

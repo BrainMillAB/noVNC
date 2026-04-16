@@ -2464,9 +2464,10 @@ describe('Remote Frame Buffer protocol client', function () {
                     });
                     // numTunnels=0 → heuristic #0
                     client._sock._websocket._receiveData(new Uint8Array([0, 0, 0, 0]));
-                    // Supply the 16 bytes of server-emitted filler
-                    // after detection.
-                    const filler = new Uint8Array(16);
+                    // Supply the 20 bytes of server-emitted filler
+                    // after detection (empirically 20, not 16 as the
+                    // fork claimed — see _negotiateATENAuth comment).
+                    const filler = new Uint8Array(20);
                     client._sock._websocket._receiveData(filler);
 
                     clock.tick();
@@ -2491,9 +2492,9 @@ describe('Remote Frame Buffer protocol client', function () {
                     });
                     const callback = sinon.spy();
                     client.addEventListener("disconnect", callback);
-                    // numTunnels=0 + filler to let auth proceed
+                    // numTunnels=0 + 20 bytes filler to let auth proceed
                     client._sock._websocket._receiveData(new Uint8Array([0, 0, 0, 0]));
-                    client._sock._websocket._receiveData(new Uint8Array(16));
+                    client._sock._websocket._receiveData(new Uint8Array(20));
                     clock.tick();
                     expect(callback).to.have.been.calledOnce;
                     expect(callback.args[0][0].detail.clean).to.be.false;
