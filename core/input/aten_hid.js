@@ -154,4 +154,50 @@ XK2HID[KeyTable.XK_ssharp]       = 0x2D; // ß (German — at -_ pos)
 // is emitted explicitly (we keep the existing XK_less/XK_bar
 // mappings pointing at their US equivalents for broad compat).
 
+// Spanish-specific keysyms.  Spanish ISO is QWERTY-base, and the
+// locale letters sit at positions that don't conflict with any other
+// layout's mappings we've added.
+//   ; pos -> HID 0x33 : ñ
+//   = pos -> HID 0x2E : ¡ (unshifted), ¿ (shifted)
+XK2HID[KeyTable.XK_ntilde]         = 0x33;
+XK2HID[KeyTable.XK_Ntilde]         = 0x33;
+XK2HID[KeyTable.XK_exclamdown]     = 0x2E;
+XK2HID[KeyTable.XK_questiondown]   = 0x2E;
+
+// Italian-specific keysyms.  Italian ISO is QWERTY-base, with five
+// dedicated keys for unshifted accented vowels.  Shifted variants
+// (capital accented vowels, é, °, ç) mostly require dead keys or
+// share positions with letters already covered — skipped here.
+//   [ pos -> HID 0x2F : è
+//   ] pos -> HID 0x30 : +  (no accented letter, skipped)
+//   ; pos -> HID 0x33 : ò
+//   ' pos -> HID 0x34 : à
+//   \ pos -> HID 0x32 : ù
+//   = pos -> HID 0x2E : ì
+XK2HID[KeyTable.XK_egrave]         = 0x2F;
+XK2HID[KeyTable.XK_Egrave]         = 0x2F;
+XK2HID[KeyTable.XK_ograve]         = 0x33;
+XK2HID[KeyTable.XK_Ograve]         = 0x33;
+XK2HID[KeyTable.XK_agrave]         = 0x34;
+XK2HID[KeyTable.XK_Agrave]         = 0x34;
+XK2HID[KeyTable.XK_ugrave]         = 0x32;
+XK2HID[KeyTable.XK_Ugrave]         = 0x32;
+XK2HID[KeyTable.XK_igrave]         = 0x2E;
+XK2HID[KeyTable.XK_Igrave]         = 0x2E;
+
+// Portuguese-specific keysym.  ç sits at ; pos on Portuguese ISO,
+// same physical slot as Italian ò (different keysym, no conflict).
+// Dead-key variants (ã, õ, ê, â, á, etc.) would require multi-HID
+// synthesis and are skipped here.
+//   ; pos -> HID 0x33 : ç
+XK2HID[KeyTable.XK_ccedilla]       = 0x33;
+XK2HID[KeyTable.XK_Ccedilla]       = 0x33;
+
+// Swiss-French / Swiss-German layouts use a single physical ISO
+// keyboard with both Latin locales labelled on the same keys.
+// Required keysyms (è, é, à, ä, ö, ü) are already covered by the
+// German + Italian + Nordic entries above because physical positions
+// are identical across the three layouts.  No additional XK2HID
+// entries needed for Swiss support; see docs/keyboard-layouts.md.
+
 export default XK2HID;

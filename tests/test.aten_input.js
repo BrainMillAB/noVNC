@@ -103,6 +103,47 @@ describe('ATEN XK2HID table', function () {
             expect(ATENXK2HID[KeyTable.XK_a]).to.equal(0x04);
         });
     });
+
+    describe('Spanish / Italian / Portuguese / Swiss ISO layout extensions', function () {
+        it('maps Spanish-specific keysyms to their physical positions', function () {
+            expect(ATENXK2HID[KeyTable.XK_ntilde]).to.equal(0x33);         // ñ at ; pos
+            expect(ATENXK2HID[KeyTable.XK_Ntilde]).to.equal(0x33);
+            expect(ATENXK2HID[KeyTable.XK_exclamdown]).to.equal(0x2E);     // ¡ at = pos
+            expect(ATENXK2HID[KeyTable.XK_questiondown]).to.equal(0x2E);   // ¿ at shift-= pos
+        });
+
+        it('maps Italian unshifted accented vowels to their physical positions', function () {
+            expect(ATENXK2HID[KeyTable.XK_egrave]).to.equal(0x2F);         // è at [ pos
+            expect(ATENXK2HID[KeyTable.XK_ograve]).to.equal(0x33);         // ò at ; pos
+            expect(ATENXK2HID[KeyTable.XK_agrave]).to.equal(0x34);         // à at ' pos
+            expect(ATENXK2HID[KeyTable.XK_ugrave]).to.equal(0x32);         // ù at \ pos
+            expect(ATENXK2HID[KeyTable.XK_igrave]).to.equal(0x2E);         // ì at = pos
+        });
+
+        it('maps Portuguese ç to the same physical position as Italian ò', function () {
+            expect(ATENXK2HID[KeyTable.XK_ccedilla]).to.equal(0x33);
+            expect(ATENXK2HID[KeyTable.XK_Ccedilla]).to.equal(0x33);
+        });
+
+        it('does NOT claim XK_eacute (conflicts Italian vs Swiss-French vs French)', function () {
+            // docs/keyboard-layouts.md explains why.  Leaving it
+            // unmapped means é still won't reach the BMC from a
+            // Swiss/Italian user, but at least users on conflicting
+            // layouts don't all break.
+            expect(ATENXK2HID[KeyTable.XK_eacute]).to.equal(undefined);
+        });
+
+        it('leaves Nordic/German mappings intact', function () {
+            // Sanity: the Nordic+German additions from the earlier
+            // commit must still work after the Latin-South additions
+            // above.  Shared HIDs (e.g. XK_ograve and XK_odiaeresis
+            // both at 0x33) are fine because they're distinct
+            // keysyms.
+            expect(ATENXK2HID[KeyTable.XK_aring]).to.equal(0x2F);
+            expect(ATENXK2HID[KeyTable.XK_odiaeresis]).to.equal(0x33);
+            expect(ATENXK2HID[KeyTable.XK_udiaeresis]).to.equal(0x2F);
+        });
+    });
 });
 
 describe('RFB.messages.atenKeyEvent', function () {
