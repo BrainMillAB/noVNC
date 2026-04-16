@@ -2922,6 +2922,116 @@ describe('Remote Frame Buffer protocol client', function () {
             client._fbHeight = 20;
         });
 
+        describe('ATEN iKVM _handleDataRect glue', function () {
+            // Both behaviours tested here are gated on _rfbAtenikvm.
+            // They route standard FramebufferUpdate messages through
+            // the ATEN-aware decoder registry and keep the framebuffer
+            // size in sync with whatever the ATEN server decides to
+            // send.
+
+            beforeEach(function () {
+                client._rfbAtenikvm = true;
+                // Start with a known FB size so "dim mismatch" tests
+                // are deterministic.
+                client._fbWidth = 640;
+                client._fbHeight = 480;
+            });
+
+            // Build a full FBU message: msg-type=0, pad, numRects=1,
+            // and a single rect header (x, y, w, h, encoding).
+            function buildFbu(x, y, w, h, encoding) {
+                const data = [];
+                data.push(0);                // msg-type
+                data.push(0);                // padding
+                push16(data, 1);             // numRects
+                push16(data, x);
+                push16(data, y);
+                push16(data, w);
+                push16(data, h);
+                push32(data, encoding >>> 0);
+                return new Uint8Array(data);
+            }
+
+            it('rewrites encoding 0x00 to Hermon (0x59) on ATEN sessions', function () {
+                // Swap in a spy decoder at the Hermon slot to catch
+                // the rewrite.
+                let called = false;
+                const origHermon = client._decoders[0x59];
+                client._decoders[0x59] = {
+                    decodeRect() {
+                        called = true;
+                        expect(client._FBU.encoding).to.equal(0x59);
+                        return true; // pretend success
+                    }
+                };
+                try {
+                    client._sock._websocket._receiveData(buildFbu(0, 0, 640, 480, 0));
+                } finally {
+                    client._decoders[0x59] = origHermon;
+                }
+                expect(called).to.be.true;
+            });
+
+            it('does NOT rewrite encoding 0x00 outside ATEN sessions', function () {
+                client._rfbAtenikvm = false;
+                let rawCalled = false;
+                let hermonCalled = false;
+                const origRaw = client._decoders[0];
+                const origHermon = client._decoders[0x59];
+                client._decoders[0] = { decodeRect() { rawCalled = true; return true; } };
+                client._decoders[0x59] = { decodeRect() { hermonCalled = true; return true; } };
+                try {
+                    client._sock._websocket._receiveData(buildFbu(0, 0, 640, 480, 0));
+                } finally {
+                    client._decoders[0] = origRaw;
+                    client._decoders[0x59] = origHermon;
+                }
+                expect(rawCalled).to.be.true;
+                expect(hermonCalled).to.be.false;
+            });
+
+            it('resizes the framebuffer when an ATEN video rect carries new dimensions', function () {
+                // 800x600 rect of AST2100 — fb was 640x480.
+                const origAst = client._decoders[0x57];
+                client._decoders[0x57] = { decodeRect() { return true; } };
+                try {
+                    client._sock._websocket._receiveData(buildFbu(0, 0, 800, 600, 0x57));
+                } finally {
+                    client._decoders[0x57] = origAst;
+                }
+                expect(client._fbWidth).to.equal(800);
+                expect(client._fbHeight).to.equal(600);
+            });
+
+            it('does NOT resize on the ATEN screen-off marker', function () {
+                const origAst = client._decoders[0x57];
+                client._decoders[0x57] = { decodeRect() { return true; } };
+                try {
+                    // 64896 x 65056 is the screen-off marker — fb stays at 640x480.
+                    client._sock._websocket._receiveData(buildFbu(0, 0, 64896, 65056, 0x57));
+                } finally {
+                    client._decoders[0x57] = origAst;
+                }
+                expect(client._fbWidth).to.equal(640);
+                expect(client._fbHeight).to.equal(480);
+            });
+
+            it('does NOT resize when only one axis changes', function () {
+                // Fork-preserved behavior: resize requires BOTH axes to
+                // differ from the current fb size.  This suppresses
+                // spurious resize events.
+                const origHermon = client._decoders[0x59];
+                client._decoders[0x59] = { decodeRect() { return true; } };
+                try {
+                    client._sock._websocket._receiveData(buildFbu(0, 0, 800, 480, 0x59));
+                } finally {
+                    client._decoders[0x59] = origHermon;
+                }
+                expect(client._fbWidth).to.equal(640);
+                expect(client._fbHeight).to.equal(480);
+            });
+        });
+
         describe('ATEN iKVM proprietary messages', function () {
             // ATEN BMCs interleave these proprietary messages with the
             // standard server->client channel.  The client drains them

@@ -3186,6 +3186,37 @@ export default class RFB extends EventTargetMixin {
     }
 
     _handleDataRect() {
+        // ATEN iKVM quirk: sometimes the server labels a rectangle
+        // with encoding 0 (Raw) when the payload is actually the
+        // Hermon (0x59) wire format.  Rewrite the encoding so the
+        // right decoder picks it up.  Documented in the fork at the
+        // _handle_FB_update dispatch — only happens on an active
+        // ATEN session, so gated on _rfbAtenikvm.
+        if (this._rfbAtenikvm && this._FBU.encoding === encodings.encodingRaw) {
+            this._FBU.encoding = encodings.encodingATENHermon;
+        }
+
+        // ATEN iKVM does not advertise (Extended)DesktopSize pseudo-
+        // encodings; it signals resize purely by shipping rectangles
+        // whose dimensions differ from the current framebuffer.  If we
+        // are dispatching an ATEN video-encoded rect and its
+        // dimensions straddle the current fb size, resize first so the
+        // decoder's blits land inside the new canvas bounds.  Exclude
+        // the screen-off marker (w=64896, h=65056) — that is NOT an
+        // actual resize, just a display-off signal.  The `!==` && (AND
+        // not OR) on both axes matches the fork's behavior, which
+        // suppresses spurious resize events when only one axis changes.
+        if (this._rfbAtenikvm &&
+            (this._FBU.encoding === encodings.encodingATENHermon ||
+             this._FBU.encoding === encodings.encodingATENAST2100) &&
+            !(this._FBU.width === 64896 && this._FBU.height === 65056) &&
+            this._fbWidth !== this._FBU.width &&
+            this._fbHeight !== this._FBU.height) {
+            Log.Info("ATEN: resizing framebuffer to " +
+                     this._FBU.width + "x" + this._FBU.height);
+            this._resize(this._FBU.width, this._FBU.height);
+        }
+
         let decoder = this._decoders[this._FBU.encoding];
         if (!decoder) {
             this._fail("Unsupported encoding (encoding: " +
