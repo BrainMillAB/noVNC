@@ -2987,6 +2987,50 @@ describe('Remote Frame Buffer protocol client', function () {
                 const aRepeat = client._sock._websocket._getSentData();
                 expect(aRepeat).to.have.lengthOf(0);
             });
+
+            // Swedish-layout test: Mac with Swedish keyboard sends
+            // keysym=XK_minus (45) for the key whose physical position
+            // is DOM code=Slash.  Before the code-based HID routing,
+            // XK2HID[45]=0x2D was sent, which Swedish guest decodes as
+            // "+".  With the fix, code=Slash → HID 0x38 is sent, which
+            // Swedish guest decodes as "-".  This test asserts the fix
+            // by observing the HID byte in the emitted wire.
+            it('uses DOM code for HID routing when available (Swedish minus key)', function () {
+                // code=Slash, but keysym is XK_minus (a Swedish user's
+                // Mac emits this for the - key at physical Slash).
+                client.sendKey(0x002D, 'Slash', true);
+                const sent = client._sock._websocket._getSentData();
+                expect(sent).to.have.lengthOf(18);
+                // HID bytes are at offsets 5..8, big-endian u32.
+                // We want 0x00000038 (Slash = HID 0x38), NOT 0x0000002D
+                // (XK_minus = HID 0x2D).
+                expect(sent[5]).to.equal(0);
+                expect(sent[6]).to.equal(0);
+                expect(sent[7]).to.equal(0);
+                expect(sent[8]).to.equal(0x38);
+            });
+
+            it('falls back to keysym-based HID when code is null (OSK path)', function () {
+                // OSK clicks pass code=null.  This path should still
+                // route through XK2HID.  XK_a=0x61 → HID 0x04.
+                client.sendKey(0x0061, null, true);
+                const sent = client._sock._websocket._getSentData();
+                expect(sent).to.have.lengthOf(18);
+                expect(sent[8]).to.equal(0x04);
+            });
+
+            it('sends HID 0 for an unmapped keysym with no code', function () {
+                // An unmapped keysym with no code still emits a key
+                // event (down flag correct) but with zero HID payload.
+                // ATEN firmware no-ops on HID 0.
+                client.sendKey(0x42424242, null, true);
+                const sent = client._sock._websocket._getSentData();
+                expect(sent).to.have.lengthOf(18);
+                expect(sent[5]).to.equal(0);
+                expect(sent[6]).to.equal(0);
+                expect(sent[7]).to.equal(0);
+                expect(sent[8]).to.equal(0);
+            });
         });
 
         describe('ATEN iKVM _handleDataRect glue', function () {

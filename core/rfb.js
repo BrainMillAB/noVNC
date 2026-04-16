@@ -25,6 +25,7 @@ import Websock from "./websock.js";
 import KeyTable from "./input/keysym.js";
 import XtScancode from "./input/xtscancodes.js";
 import ATENXK2HID from "./input/aten_hid.js";
+import ATENCodeToHID from "./input/aten_code_to_hid.js";
 import { encodings } from "./encodings.js";
 import RSAAESAuthenticationState from "./ra2.js";
 import legacyCrypto from "./crypto/crypto.js";
@@ -499,32 +500,61 @@ export default class RFB extends EventTargetMixin {
         // QEMU-extended paths entirely and send the ATEN-shaped
         // 18-byte KeyEvent instead.
         if (this._rfbAtenikvm) {
-            if (!keysym) { return; }
-
-            // ATEN keystroke-repeat suppression.
+            // Prefer DOM `code` (physical key identifier, layout-
+            // independent) over keysym for HID routing.  Physical
+            // typing carries `code` from the noVNC Keyboard stack;
+            // OSK clicks don't — they fall back to keysym lookup via
+            // aten_hid.js XK2HID.  The `code` path is the correct
+            // layer for HID; it answers the "which physical key was
+            // pressed?" question without any layout assumptions.
             //
-            // The X9 BMC treats each incoming VNC KeyDown as an
-            // independent keypress when building its USB-HID reports
-            // to the guest OS, so any browser-side keyboard autorepeat
-            // (Chrome et al. re-fire keydown every ~33 ms while the
-            // key is held) compounds with the guest's own typematic
-            // and produces runs of N extra characters from a single
-            // human keystroke.  Drop adjacent down events for the
-            // same keysym when we have not yet observed the matching
-            // up — the second+ physical press is always preceded by
-            // a keyup, so this never rejects a legitimate repeat.
+            // Example: Swedish user presses the "-" key (code=Slash).
+            //   code path: ATENCodeToHID["Slash"] = 0x38, guest with
+            //   Swedish layout at HID 0x38 = "-".  Right.
+            //   keysym path: XK2HID[XK_minus] = 0x2D, guest Swedish
+            //   at HID 0x2D = "+".  Wrong, but that's what the older
+            //   code did for anyone without `code`.
+            let hid = 0;
+            let identifier = null;  // what we dedupe on
+            if (code && ATENCodeToHID[code] !== undefined) {
+                hid = ATENCodeToHID[code];
+                identifier = 'c:' + code;
+            } else if (keysym && ATENXK2HID[keysym] !== undefined) {
+                hid = ATENXK2HID[keysym];
+                identifier = 'k:' + keysym;
+            } else if (!keysym) {
+                return;  // nothing we can send
+            } else {
+                // Known keysym but no HID mapping — still send it
+                // with HID 0 so the server sees the event; the guest
+                // likely no-ops on it.
+                identifier = 'k:' + keysym;
+            }
+
+            // ATEN keystroke-repeat suppression.  The X9 BMC treats
+            // each incoming VNC KeyDown as an independent keypress,
+            // so browser autorepeat compounds with guest typematic
+            // and runs keystrokes together.  Drop adjacent down
+            // events for the same physical key (or keysym, for the
+            // OSK fallback) when we haven't yet seen the matching
+            // up.  A legitimate second physical press is always
+            // preceded by a keyup, so this never rejects a real
+            // repeat.
             if (!this._atenHeldKeys) {
                 this._atenHeldKeys = new Set();
             }
             if (down) {
-                if (this._atenHeldKeys.has(keysym)) { return; }
-                this._atenHeldKeys.add(keysym);
+                if (this._atenHeldKeys.has(identifier)) { return; }
+                this._atenHeldKeys.add(identifier);
             } else {
-                this._atenHeldKeys.delete(keysym);
+                this._atenHeldKeys.delete(identifier);
             }
 
-            Log.Info("Sending ATEN key (" + (down ? "down" : "up") + "): keysym " + keysym);
-            RFB.messages.atenKeyEvent(this._sock, keysym, down ? 1 : 0);
+            Log.Info("Sending ATEN key (" + (down ? "down" : "up") +
+                     "): code=" + (code || '-') +
+                     " keysym=" + (keysym || 0) +
+                     " hid=0x" + hid.toString(16));
+            RFB.messages.atenKeyEvent(this._sock, keysym || 0, down ? 1 : 0, hid);
             return;
         }
 
@@ -3430,17 +3460,19 @@ RFB.messages = {
     //     1     u8  pad          = 0
     //     2     u8  down         (1 = press, 0 = release)
     //     3-4   u16 pad          = 0
-    //     5-8   u32 HID scancode (ATENXK2HID[keysym], big-endian)
+    //     5-8   u32 HID scancode (big-endian)
     //     9-17  9 × u8 pad       = 0
     //
-    // Unknown keysyms translate to HID scancode `undefined`, which
-    // writes the scancode bytes as NaN; the caller in sendKey() above
-    // filters out !keysym before invoking this function but does not
-    // validate presence in the lookup table.  An unknown keysym is
-    // therefore sent as zero-filled scancode bytes — ATEN firmware
-    // treats that as a no-op.
-    atenKeyEvent(sock, keysym, down) {
-        const hid = ATENXK2HID[keysym] | 0;  // coerce undefined to 0
+    // `hid` is the optional USB HID scancode to send.  When provided
+    // (e.g., from sendKey's DOM-code-based translation path), it wins
+    // over the legacy keysym lookup — the latter is used only as a
+    // backward-compat fallback for callers that have not been updated
+    // yet.  Unknown / unmappable keysyms translate to HID 0 which
+    // ATEN firmware no-ops on.
+    atenKeyEvent(sock, keysym, down, hid) {
+        if (hid === undefined) {
+            hid = ATENXK2HID[keysym] | 0;  // coerce undefined to 0
+        }
 
         sock.sQpush8(4);                 // msg-type
         sock.sQpush8(0);                 // pad
