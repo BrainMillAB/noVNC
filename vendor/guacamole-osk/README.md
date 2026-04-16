@@ -17,6 +17,7 @@ under its own Apache-2.0 licence.
 | `fr-fr-azerty.json` | `guacamole/src/main/frontend/src/layouts/fr-fr-azerty.json` |
 | `it-it-qwerty.json` | `guacamole/src/main/frontend/src/layouts/it-it-qwerty.json` |
 | `nl-nl-qwerty.json` | `guacamole/src/main/frontend/src/layouts/nl-nl-qwerty.json` |
+| `sv-se-qwerty.json` | `guacamole/src/main/frontend/src/layouts/sv-se-qwerty.json` — BrainMill addition pending upstream merge; see BrainMillAB/guacamole-client branch `feature/sv-se-qwerty` |
 | `tr-tr-qwerty.json` | `guacamole/src/main/frontend/src/layouts/tr-tr-qwerty.json` |
 
 Guacamole also ships a Russian (`ru-ru-qwerty`) layout; we deliberately

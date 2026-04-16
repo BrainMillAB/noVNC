@@ -1716,6 +1716,20 @@ const UI = {
      * Everything is lazy-loaded on first open so sessions that never
      * touch the OSK pay zero bundle / layout-JSON cost.
      */
+    // The OSK is width-driven — Guacamole scales key height
+    // proportionally to the width passed to resize().  Capping prevents
+    // the keyboard from eating huge vertical real estate on wide
+    // monitors.  Default target width is tuned for "fits in the lower
+    // strip of the viewport without obscuring much of the console."
+    _oskTargetWidth(container) {
+        const override = parseInt(WebUtil.getConfigVar('osk_width', '0'), 10);
+        if (override > 100) { return override; }
+        // Conservative default: stay under 900 px regardless of how
+        // wide the page is.  Guacamole's aspect ratio puts the
+        // keyboard at roughly 25–30 % of that width in height.
+        return Math.min(container.offsetWidth, 900);
+    },
+
     async initOsk() {
         if (UI._oskInstance) { return UI._oskInstance; }
 
@@ -1753,7 +1767,7 @@ const UI = {
 
         const container = document.getElementById('noVNC_osk_container');
         container.appendChild(osk.getElement());
-        osk.resize(container.offsetWidth);
+        osk.resize(UI._oskTargetWidth(container));
 
         // Prevent the canvas from stealing focus when the user
         // interacts with the OSK.  Guacamole OSK dispatches logical
@@ -1766,7 +1780,7 @@ const UI = {
         // Re-layout on viewport changes.
         window.addEventListener('resize', () => {
             if (!container.classList.contains('noVNC_osk_hidden')) {
-                osk.resize(container.offsetWidth);
+                osk.resize(UI._oskTargetWidth(container));
             }
         });
 
@@ -1782,7 +1796,7 @@ const UI = {
                 const osk = await UI.initOsk();
                 container.classList.remove('noVNC_osk_hidden');
                 button.classList.add('noVNC_selected');
-                osk.resize(container.offsetWidth);
+                osk.resize(UI._oskTargetWidth(container));
             } catch (err) {
                 Log.Error('Failed to initialise on-screen keyboard: ' + err);
             }

@@ -187,3 +187,39 @@ user on a rearranged-base layout shows up and asks, it's about
 then, rearranged-base users should configure the guest OS to match
 their physical layout and everything else Just Works — per the
 physical-keyboard analogy at the top of this document.
+
+## On-screen keyboard: related backlog
+
+The on-screen keyboard (Guacamole-powered, see `vendor/guacamole-osk/`)
+has its own layout-selection mechanism entirely separate from the
+XK2HID table discussed above — the OSK emits keysyms from whatever
+layout JSON it was loaded with, and those keysyms then flow through
+the XK2HID table to produce HID scancodes as normal.
+
+Currently the OSK layout is picked at page load via the
+`&osk_layout=<name>` URL parameter.  Available:
+`en-us-qwerty` (default), `de-de-qwertz`, `es-es-qwerty`,
+`fr-fr-azerty`, `it-it-qwerty`, `nl-nl-qwerty`, `sv-se-qwerty`,
+`tr-tr-qwerty`.
+
+Known UX gaps (not yet implemented):
+
+- **In-OSK layout switcher**.  Today the user must reopen the page
+  with a different URL param to switch layouts.  A small dropdown
+  inside the OSK top bar listing the available layouts and
+  hot-swapping on selection would remove this friction.  Would
+  require teardown + re-instantiate of the Guacamole OSK on change,
+  since its `Layout` is immutable after construction.
+- **In-OSK size controls**.  A +/− pair (or a slider) bound to
+  `osk.resize(px)` would let users right-size the keyboard to their
+  monitor without the `&osk_width=` URL override.
+- **Remembered preference**.  Selections above should persist in
+  localStorage so users don't reset every session.
+- **Guest-layout hinting**.  The ideal UX knows or can be told the
+  guest OS's keyboard layout and picks the matching OSK layout
+  automatically.  No protocol channel for this today — would need
+  either a manual per-target setting (stored alongside the BMC
+  hostname in host_vars) or a heuristic.
+
+These apply specifically to the OSK experience; they do not affect
+the physical-keyboard XK2HID path.

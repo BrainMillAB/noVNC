@@ -13,6 +13,14 @@
     bottom: 0;
     left: 0;
     right: 0;
+    /* Cap horizontal size so the keyboard doesn't scale up absurdly
+       on wide monitors.  Guacamole's OSK sizes keys proportionally to
+       the width it's given at resize() time, so a wide container ->
+       enormous keys -> enormous height.  The sensible ceiling is
+       around a standard laptop keyboard size.  Override via
+       `&osk_width=<pixels>` URL param at runtime. */
+    max-width: 1000px;
+    margin: 0 auto;
     background: rgba(40, 40, 40, 0.95);
     padding: 6px 4px;
     box-sizing: border-box;
