@@ -6,7 +6,7 @@
  *
  * Ported 2026 to ES modules for modern noVNC mainline by the BrainMillAB
  * team.  No algorithmic changes from the upstream fork — only the
- * module shape was adapted (IIFE + /*global*/ → named exports).
+ * module shape was adapted (IIFE + JSHint globals pragma -> named exports).
  */
 
 //
