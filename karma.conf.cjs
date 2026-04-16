@@ -41,6 +41,11 @@ module.exports = (config) => {
       { pattern: 'app/webutil.js', included: false, type: 'module' },
       { pattern: 'core/**/*.js', included: false, type: 'module' },
       { pattern: 'vendor/pako/**/*.js', included: false, type: 'module' },
+      // Apache Guacamole on-screen keyboard (vendored) + layouts.  Served
+      // so that the OSK smoke test (tests/test.osk.js) and ui.js's
+      // dynamic-import + fetch calls resolve in the Karma-hosted iframe.
+      { pattern: 'vendor/guacamole-osk/*.js', included: false, type: 'module' },
+      { pattern: 'vendor/guacamole-osk/*.json', included: false },
       // tests
       { pattern: 'tests/test.*.js', type: 'module' },
       // test support files

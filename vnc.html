@@ -40,6 +40,9 @@
     <link rel="stylesheet" href="app/styles/constants.css">
     <link rel="stylesheet" href="app/styles/base.css">
     <link rel="stylesheet" href="app/styles/input.css">
+    <!-- On-screen keyboard — Guacamole's base structure + our overlay positioning -->
+    <link rel="stylesheet" href="vendor/guacamole-osk/osk.css">
+    <link rel="stylesheet" href="app/styles/osk-overlay.css">
 
     <!-- Images that will later appear via CSS -->
     <link rel="preload" as="image" href="app/images/info.svg">
@@ -136,6 +139,11 @@
             <input type="image" alt="Extra keys" src="app/images/toggleextrakeys.svg"
                 id="noVNC_toggle_extra_keys_button" class="noVNC_button"
                 title="Show extra keys">
+
+            <!-- Full on-screen keyboard (Guacamole-powered) -->
+            <input type="image" alt="On-screen keyboard" src="app/images/keyboard.svg"
+                id="noVNC_toggle_osk_button" class="noVNC_button"
+                title="Show on-screen keyboard">
             <div class="noVNC_vcenter">
             <div id="noVNC_modifiers" class="noVNC_panel">
                 <input type="image" alt="Ctrl" src="app/images/ctrl.svg"
@@ -414,6 +422,10 @@
         <textarea id="noVNC_keyboardinput" autocapitalize="off"
             autocomplete="off" spellcheck="false" tabindex="-1"></textarea>
     </div>
+
+    <!-- Full on-screen keyboard overlay (hidden until toggled).
+         Populated lazily on first toggle; see UI.initOsk in app/ui.js. -->
+    <div id="noVNC_osk_container" class="noVNC_osk_hidden"></div>
 
     <audio id="noVNC_bell">
         <source src="app/sounds/bell.oga" type="audio/ogg">

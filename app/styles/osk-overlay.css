@@ -1,0 +1,42 @@
+/*
+ * BMC-specific overlay styling for the Guacamole on-screen keyboard.
+ *
+ * Guacamole's own osk.css (vendor/guacamole-osk/osk.css) styles the
+ * keyboard's internal structure (keys, rows, modifier visibility).
+ * This file positions the keyboard over the noVNC canvas as a
+ * floating overlay, with toggle visibility driven by a single
+ * `.noVNC_osk_hidden` class added by app/ui.js.
+ */
+
+#noVNC_osk_container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(40, 40, 40, 0.95);
+    padding: 6px 4px;
+    box-sizing: border-box;
+    z-index: 100;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.4);
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+}
+
+#noVNC_osk_container.noVNC_osk_hidden {
+    display: none;
+}
+
+/* The Guacamole keyboard auto-sizes its keys to fill the container
+   width.  A small bottom gutter keeps the keys off the absolute
+   bottom edge on touch devices (where the viewport may shift). */
+#noVNC_osk_container > .guac-keyboard {
+    margin-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* Pressed-state highlight — Guacamole ships a default but this
+   tweaks it for the noVNC dark theme. */
+#noVNC_osk_container .guac-keyboard-pressed > .guac-keyboard-cap {
+    background: #0366d6 !important;
+    color: #fff !important;
+}

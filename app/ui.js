@@ -296,6 +296,8 @@ const UI = {
     addExtraKeysHandlers() {
         document.getElementById("noVNC_toggle_extra_keys_button")
             .addEventListener('click', UI.toggleExtraKeys);
+        document.getElementById("noVNC_toggle_osk_button")
+            .addEventListener('click', UI.toggleOsk);
         document.getElementById("noVNC_toggle_ctrl_button")
             .addEventListener('click', UI.toggleCtrl);
         document.getElementById("noVNC_toggle_windows_button")
@@ -1687,6 +1689,106 @@ const UI = {
             UI.closeExtraKeys();
         } else  {
             UI.openExtraKeys();
+        }
+    },
+
+    /*
+     * -----------------------------------------------------------------
+     * On-screen keyboard (Guacamole-powered)
+     * -----------------------------------------------------------------
+     *
+     * A full QWERTY overlay keyboard that bypasses the browser keyboard
+     * entirely and feeds keysyms directly into `rfb.sendKey`.  Useful
+     * on touch devices, on systems with broken/mismatched physical
+     * keyboard layouts, or just when you need to click a function key
+     * you don't have.
+     *
+     * The Guacamole library (vendor/guacamole-osk/OnScreenKeyboard.js)
+     * emits X11 keysyms natively, which matches what RFB.sendKey
+     * expects — no translation glue needed.
+     *
+     * Layout selection: `&osk_layout=<name>` URL parameter picks one
+     * of the JSON layouts in vendor/guacamole-osk/.  Default en-us-
+     * qwerty.  Available out of the box: de-de-qwertz, en-us-qwerty,
+     * es-es-qwerty, fr-fr-azerty, it-it-qwerty, nl-nl-qwerty,
+     * tr-tr-qwerty.
+     *
+     * Everything is lazy-loaded on first open so sessions that never
+     * touch the OSK pay zero bundle / layout-JSON cost.
+     */
+    async initOsk() {
+        if (UI._oskInstance) { return UI._oskInstance; }
+
+        const layoutName = WebUtil.getConfigVar('osk_layout', 'en-us-qwerty');
+
+        // Dynamic imports so clients that never open the OSK never
+        // fetch 25-30 KB of module + layout JSON.
+        const moduleUrl = new URL('../vendor/guacamole-osk/OnScreenKeyboard.js',
+                                  import.meta.url);
+        const layoutUrl = new URL('../vendor/guacamole-osk/' + layoutName + '.json',
+                                  import.meta.url);
+
+        const [OskModule, layoutJson] = await Promise.all([
+            import(moduleUrl),
+            fetch(layoutUrl).then(r => {
+                if (!r.ok) {
+                    throw new Error('OSK layout fetch failed: ' + layoutUrl +
+                                    ' (' + r.status + ')');
+                }
+                return r.json();
+            }),
+        ]);
+
+        const OnScreenKeyboard = OskModule.default;
+        const osk = new OnScreenKeyboard(layoutJson);
+
+        osk.onkeydown = (keysym) => {
+            if (!UI.rfb) { return; }
+            UI.rfb.sendKey(keysym, null, true);
+        };
+        osk.onkeyup = (keysym) => {
+            if (!UI.rfb) { return; }
+            UI.rfb.sendKey(keysym, null, false);
+        };
+
+        const container = document.getElementById('noVNC_osk_container');
+        container.appendChild(osk.getElement());
+        osk.resize(container.offsetWidth);
+
+        // Prevent the canvas from stealing focus when the user
+        // interacts with the OSK.  Guacamole OSK dispatches logical
+        // key events directly via sendKey, so we never want the
+        // container to receive keyboard focus.
+        container.addEventListener('mousedown', (ev) => ev.preventDefault());
+        container.addEventListener('touchstart', (ev) => ev.preventDefault(),
+                                   { passive: false });
+
+        // Re-layout on viewport changes.
+        window.addEventListener('resize', () => {
+            if (!container.classList.contains('noVNC_osk_hidden')) {
+                osk.resize(container.offsetWidth);
+            }
+        });
+
+        UI._oskInstance = osk;
+        return osk;
+    },
+
+    async toggleOsk() {
+        const container = document.getElementById('noVNC_osk_container');
+        const button    = document.getElementById('noVNC_toggle_osk_button');
+        if (container.classList.contains('noVNC_osk_hidden')) {
+            try {
+                const osk = await UI.initOsk();
+                container.classList.remove('noVNC_osk_hidden');
+                button.classList.add('noVNC_selected');
+                osk.resize(container.offsetWidth);
+            } catch (err) {
+                Log.Error('Failed to initialise on-screen keyboard: ' + err);
+            }
+        } else {
+            container.classList.add('noVNC_osk_hidden');
+            button.classList.remove('noVNC_selected');
         }
     },
 
