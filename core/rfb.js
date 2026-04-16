@@ -38,6 +38,8 @@ import TightPNGDecoder from "./decoders/tightpng.js";
 import ZRLEDecoder from "./decoders/zrle.js";
 import JPEGDecoder from "./decoders/jpeg.js";
 import H264Decoder from "./decoders/h264.js";
+import ATENHermonDecoder from "./decoders/aten_hermon.js";
+import ATENAST2100Decoder from "./decoders/aten_ast2100.js";
 
 // How many seconds to wait for a disconnect to finish
 const DISCONNECT_TIMEOUT = 3;
@@ -258,6 +260,8 @@ export default class RFB extends EventTargetMixin {
         this._decoders[encodings.encodingZRLE] = new ZRLEDecoder();
         this._decoders[encodings.encodingJPEG] = new JPEGDecoder();
         this._decoders[encodings.encodingH264] = new H264Decoder();
+        this._decoders[encodings.encodingATENHermon] = new ATENHermonDecoder();
+        this._decoders[encodings.encodingATENAST2100] = new ATENAST2100Decoder();
 
         // NB: nothing that needs explicit teardown should be done
         // before this point, since this can throw an exception

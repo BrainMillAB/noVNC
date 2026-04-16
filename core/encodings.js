@@ -18,6 +18,16 @@ export const encodings = {
     encodingJPEG: 21,
     encodingH264: 50,
 
+    // ATEN iKVM proprietary encodings (Supermicro / ASRock / other BMCs
+    // using ATEN AST2100-family SoCs).  Not part of the RFB standard; the
+    // fork-of-noVNC lineage documents them:
+    //   https://github.com/kelleyk/noVNC  branch bmc-support
+    encodingATENAST2100: 0x57,
+    encodingATENASTJPEG: 0x58,
+    encodingATENHermon:  0x59,
+    encodingATENYarkon:  0x60,
+    encodingATENPilot3:  0x61,
+
     pseudoEncodingQualityLevel9: -23,
     pseudoEncodingQualityLevel0: -32,
     pseudoEncodingDesktopSize: -223,
@@ -49,6 +59,11 @@ export function encodingName(num) {
         case encodings.encodingTightPNG: return "TightPNG";
         case encodings.encodingJPEG:     return "JPEG";
         case encodings.encodingH264:     return "H.264";
+        case encodings.encodingATENAST2100: return "ATEN_AST2100";
+        case encodings.encodingATENASTJPEG: return "ATEN_ASTJPEG";
+        case encodings.encodingATENHermon:  return "ATEN_Hermon";
+        case encodings.encodingATENYarkon:  return "ATEN_Yarkon";
+        case encodings.encodingATENPilot3:  return "ATEN_Pilot3";
         default:                         return "[unknown encoding " + num + "]";
     }
 }
