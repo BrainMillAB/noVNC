@@ -196,30 +196,39 @@ XK2HID table discussed above — the OSK emits keysyms from whatever
 layout JSON it was loaded with, and those keysyms then flow through
 the XK2HID table to produce HID scancodes as normal.
 
-Currently the OSK layout is picked at page load via the
-`&osk_layout=<name>` URL parameter.  Available:
+Default layout is picked via the `&osk_layout=<name>` URL parameter
+(typically set per-BMC by the ansible role — see
+`csbnet-ansible/roles/novnc_gateway/README.md`).  Available:
 `en-us-qwerty` (default), `de-de-qwertz`, `es-es-qwerty`,
 `fr-fr-azerty`, `it-it-qwerty`, `nl-nl-qwerty`, `sv-se-qwerty`,
 `tr-tr-qwerty`.
 
+Shipped:
+
+- **In-OSK layout switcher** — dropdown in the OSK controls bar
+  listing every vendored layout; teardown + re-instantiate on
+  selection.
+- **In-OSK size controls** — `−` / `+` buttons adjust the target
+  width (bound through `osk.resize()`) in 100 px steps.
+- **Remembered preference** — layout choice, size and position
+  persist to `localStorage` via `WebUtil.writeSetting`.
+- **Drag-to-reposition** — the overlay can be dragged from any
+  non-interactive surface of its backdrop: the padding around the
+  keyboard, the controls-bar gaps between the dropdown / size
+  buttons / close button, and the spacing around the movement /
+  arrow-key cluster.  Position persists across reloads.
+  Implemented on pointer events + `setPointerCapture` to keep fast
+  mouse drags glued to the cursor.
+
 Known UX gaps (not yet implemented):
 
-- **In-OSK layout switcher**.  Today the user must reopen the page
-  with a different URL param to switch layouts.  A small dropdown
-  inside the OSK top bar listing the available layouts and
-  hot-swapping on selection would remove this friction.  Would
-  require teardown + re-instantiate of the Guacamole OSK on change,
-  since its `Layout` is immutable after construction.
-- **In-OSK size controls**.  A +/− pair (or a slider) bound to
-  `osk.resize(px)` would let users right-size the keyboard to their
-  monitor without the `&osk_width=` URL override.
-- **Remembered preference**.  Selections above should persist in
-  localStorage so users don't reset every session.
 - **Guest-layout hinting**.  The ideal UX knows or can be told the
   guest OS's keyboard layout and picks the matching OSK layout
   automatically.  No protocol channel for this today — would need
   either a manual per-target setting (stored alongside the BMC
-  hostname in host_vars) or a heuristic.
+  hostname in host_vars) or a heuristic.  Partially addressed via
+  the ansible role's `guest_kbd_layout` host_var, which injects
+  `&osk_layout=` into the landing-page link; no runtime auto-pick.
 
 These apply specifically to the OSK experience; they do not affect
 the physical-keyboard XK2HID path.

@@ -1771,30 +1771,56 @@ const UI = {
         return Math.min(container.offsetWidth, 900);
     },
 
-    // Install the drag handler on the OSK container.  Only the bare
-    // padding around the keyboard acts as the grab handle — clicks
-    // on keys, controls, and the keyboard-mount div all bubble to
-    // the container but have a different event.target, so the check
-    // `event.target === container` singles out "clicked on the grey
-    // backdrop" and starts a drag.  Persists position in localStorage.
+    // Install the drag handler on the OSK container.  The whole
+    // container backdrop (padding around the keyboard, controls-bar
+    // gaps, spacing around the movement/arrow-key cluster) acts as
+    // a drag handle.  The exclusion list in `isDragSurface` below
+    // keeps interactive elements (keys, buttons, select, inputs)
+    // firmly non-draggable — a grab on any of those does not start
+    // a drag.  Persists position in localStorage.
+    //
+    // Implemented on pointer events + setPointerCapture so that
+    // fast mouse moves don't drop pointermove when the pointer
+    // briefly crosses an element that would otherwise capture
+    // hover/pointer state.  One drag at a time; we remember the
+    // pointerId on start and ignore moves / ups from other
+    // pointers.
     _oskInstallDragHandle() {
         const container = document.getElementById('noVNC_osk_container');
-        const state = { active: false, offX: 0, offY: 0 };
+        const state = { active: false, pointerId: null, offX: 0, offY: 0 };
 
-        // Drag originates from either (a) the container's bare
-        // padding around the keyboard, or (b) the controls-bar dark
-        // background between the layout dropdown, size +/- buttons
-        // and close button.  Clicks on the interactive elements
-        // themselves (select / button / keyboard keys / keyboard
-        // mount) have those elements as event.target, so this check
-        // correctly excludes them.
+        // An element is a drag surface iff neither it nor any
+        // ancestor (up to and including the container) is a known
+        // interactive / keyboard element.  If the target is outside
+        // the container entirely, it's not a drag surface at all.
+        const INTERACTIVE_TAGS = new Set([
+            'BUTTON', 'SELECT', 'OPTION', 'INPUT', 'TEXTAREA', 'A',
+        ]);
+        const INTERACTIVE_CLASSES = [
+            'guac-keyboard-key',
+            'guac-keyboard-cap',
+            'guac-keyboard-key-container',
+        ];
         const isDragSurface = (target) => {
-            if (target === container) { return true; }
-            if (target && target.classList &&
-                target.classList.contains('noVNC_osk_controls')) {
-                return true;
+            if (!target || !container.contains(target)) { return false; }
+            let el = target;
+            while (el && el !== container.parentNode) {
+                if (el.nodeType === 1 /* ELEMENT_NODE */) {
+                    if (INTERACTIVE_TAGS.has(el.tagName)) { return false; }
+                    if (el.getAttribute &&
+                        el.getAttribute('contenteditable') === 'true') {
+                        return false;
+                    }
+                    if (el.classList) {
+                        for (const cls of INTERACTIVE_CLASSES) {
+                            if (el.classList.contains(cls)) { return false; }
+                        }
+                    }
+                }
+                if (el === container) { break; }
+                el = el.parentNode;
             }
-            return false;
+            return true;
         };
 
         const applyAbsolutePosition = (rect) => {
@@ -1817,25 +1843,41 @@ const UI = {
             };
         };
 
-        const start = (clientX, clientY) => {
+        const start = (ev) => {
             const rect = container.getBoundingClientRect();
             state.active = true;
-            state.offX = clientX - rect.left;
-            state.offY = clientY - rect.top;
+            state.pointerId = ev.pointerId;
+            state.offX = ev.clientX - rect.left;
+            state.offY = ev.clientY - rect.top;
             applyAbsolutePosition(rect);
             container.classList.add('noVNC_osk_dragging');
+            // Capturing on the container routes all subsequent
+            // pointer events for this pointerId to the container
+            // regardless of what's under the cursor — the core fix
+            // for "fast drag loses the pointer" bugs.
+            try {
+                container.setPointerCapture(ev.pointerId);
+            } catch (_e) { /* non-capturable pointer, best-effort */ }
         };
 
-        const move = (clientX, clientY) => {
-            if (!state.active) { return; }
-            const { x, y } = clamp(clientX - state.offX, clientY - state.offY);
+        const move = (ev) => {
+            if (!state.active || ev.pointerId !== state.pointerId) { return; }
+            const { x, y } = clamp(ev.clientX - state.offX,
+                                   ev.clientY - state.offY);
             container.style.left = x + 'px';
             container.style.top  = y + 'px';
         };
 
-        const end = () => {
+        const end = (ev) => {
             if (!state.active) { return; }
+            if (ev && ev.pointerId !== state.pointerId) { return; }
             state.active = false;
+            try {
+                if (state.pointerId !== null) {
+                    container.releasePointerCapture(state.pointerId);
+                }
+            } catch (_e) { /* already released */ }
+            state.pointerId = null;
             container.classList.remove('noVNC_osk_dragging');
             try {
                 WebUtil.writeSetting('osk_left', container.style.left);
@@ -1843,30 +1885,15 @@ const UI = {
             } catch (_e) { /* private-mode */ }
         };
 
-        // Mouse
-        container.addEventListener('mousedown', (ev) => {
+        container.addEventListener('pointerdown', (ev) => {
+            if (state.active) { return; }
             if (!isDragSurface(ev.target)) { return; }
             ev.preventDefault();
-            start(ev.clientX, ev.clientY);
-        });
-        window.addEventListener('mousemove', (ev) => move(ev.clientX, ev.clientY));
-        window.addEventListener('mouseup', end);
-
-        // Touch
-        container.addEventListener('touchstart', (ev) => {
-            if (!isDragSurface(ev.target)) { return; }
-            if (ev.touches.length !== 1) { return; }
-            ev.preventDefault();
-            const t = ev.touches[0];
-            start(t.clientX, t.clientY);
+            start(ev);
         }, { passive: false });
-        window.addEventListener('touchmove', (ev) => {
-            if (!state.active || ev.touches.length !== 1) { return; }
-            const t = ev.touches[0];
-            move(t.clientX, t.clientY);
-        }, { passive: true });
-        window.addEventListener('touchend',    end);
-        window.addEventListener('touchcancel', end);
+        container.addEventListener('pointermove', move);
+        container.addEventListener('pointerup', end);
+        container.addEventListener('pointercancel', end);
 
         // Restore saved position on construction.
         const savedLeft = WebUtil.readSetting('osk_left', null);

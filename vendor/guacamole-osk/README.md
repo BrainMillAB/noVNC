@@ -59,25 +59,36 @@ copyleft on the other).  Obligations we carry:
 
 ## How it is consumed
 
-See `../../app/ui.js` for the integration site and `../../app/styles/
-osk.css` for the visual styling.  The wiring is intentionally
-minimal:
+See `../../app/ui.js` for the integration site and
+`../../app/styles/osk-overlay.css` for the visual styling.
 
-```js
-import OnScreenKeyboard from '../vendor/guacamole-osk/OnScreenKeyboard.js';
-import layout from '../vendor/guacamole-osk/en-us-qwerty.json' with { type: 'json' };
+The core wiring around `OnScreenKeyboard` is a handful of lines —
+construct, bind `onkeydown` / `onkeyup` to `rfb.sendKey`, mount,
+`resize()`.  Guacamole's OSK emits raw X11 keysyms, which is exactly
+what noVNC's `RFB.sendKey` expects — no translation layer required.
+The ATEN path then maps keysym → USB HID scancode via
+`core/input/aten_hid.js` as usual.
 
-const osk = new OnScreenKeyboard(layout);
-osk.onkeydown = (keysym) => rfb.sendKey(keysym, null, true);
-osk.onkeyup   = (keysym) => rfb.sendKey(keysym, null, false);
-container.appendChild(osk.getElement());
-osk.resize(container.offsetWidth);
-```
+On top of that core, `app/ui.js` carries ~200 LoC of noVNC-side
+overlay UX:
 
-Guacamole's OSK emits raw X11 keysyms, which is exactly what noVNC's
-`RFB.sendKey` expects — no translation layer required.  The ATEN
-path then maps keysym → USB HID scancode via `core/input/aten_hid.js`
-as usual.
+- **Layout switcher** — a dropdown in the controls bar that tears
+  down and rebuilds the `OnScreenKeyboard` when the user picks a
+  different layout JSON (the OSK's `Layout` is immutable after
+  construction, so hot-swap requires re-instantiation).
+- **Size controls** — `−` / `+` buttons adjust the target width by
+  100 px steps and re-invoke `osk.resize()`.
+- **Close button** — hides the overlay without tearing it down.
+- **Drag-to-reposition** — the whole container backdrop is a drag
+  handle except for known interactive elements (buttons, select,
+  `guac-keyboard-key*`).  Implemented on pointer events +
+  `setPointerCapture` so fast drags don't drop the pointer.
+- **Persistence** — selected layout, size and position are stored
+  in `localStorage` via `WebUtil.writeSetting`.
+
+None of this affects the `OnScreenKeyboard` vendor code; the API
+surface this repo calls into remains just construction, key
+callbacks, mount, `resize()`, and re-creation for layout change.
 
 ## Updating to a newer Guacamole release
 
