@@ -94,14 +94,37 @@ The work that is original to this repository is:
 5. **Documentation** (`docs/aten.md`) as a practical reference for
    every ATEN deviation from standard RFB.
 
+## On-screen keyboard — Apache Guacamole
+
+The on-screen keyboard feature in `app/ui.js` is built on vendored
+code from [**Apache Guacamole**](https://guacamole.apache.org/) —
+`OnScreenKeyboard.js` plus eight keyboard-layout JSON files.  See
+`vendor/guacamole-osk/` for the full list, the ES-module conversion
+note, and the required NOTICE / LICENSE files carried forward.  The
+vendored code is Apache-2.0; this repository is MPL-2.0.  The two
+licences are compatible for redistribution.
+
+What is original to us in this area:
+
+- The ~200-line integration glue in `app/ui.js` wiring the OSK into
+  noVNC's `RFB.sendKey`, the toggle button, layout selection via URL
+  param, and lazy instantiation.
+- `app/styles/osk.css` — visual styling for the overlay (Guacamole
+  ships no CSS; each consumer skins it locally).
+- ATEN-specific behaviour: the keysyms emitted by Guacamole OSK flow
+  through `core/input/aten_hid.js` for USB HID translation, same as
+  physical-keyboard keystrokes.
+
 ## License
 
 - noVNC: **MPL-2.0** (`LICENSE.txt`).
 - Kelley's fork: **MPL-2.0** (preserved via the standard noVNC file
   headers).
-- This fork: **MPL-2.0** — no license change.  All original Kelley
-  and noVNC copyright notices are retained in their respective source
-  files.
+- Apache Guacamole vendor drop: **Apache-2.0**
+  (`vendor/guacamole-osk/LICENSE.guacamole`).
+- This fork: **MPL-2.0** — no license change.  All original Kelley,
+  noVNC, and Apache Guacamole copyright notices are retained in
+  their respective source files and NOTICE files.
 
 No part of this repository is closed-source or licence-incompatible
 with either upstream.
