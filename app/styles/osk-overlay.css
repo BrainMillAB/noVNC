@@ -57,6 +57,14 @@
     margin-bottom: 4px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: 12px;
+    /* The bar itself is a drag handle — cursor matches the outer
+       container's grab.  Interactive children (select / buttons)
+       override with their own cursors. */
+    cursor: grab;
+}
+
+#noVNC_osk_container.noVNC_osk_dragging .noVNC_osk_controls {
+    cursor: grabbing;
 }
 
 #noVNC_osk_container .noVNC_osk_controls > select {

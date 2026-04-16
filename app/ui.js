@@ -1781,6 +1781,22 @@ const UI = {
         const container = document.getElementById('noVNC_osk_container');
         const state = { active: false, offX: 0, offY: 0 };
 
+        // Drag originates from either (a) the container's bare
+        // padding around the keyboard, or (b) the controls-bar dark
+        // background between the layout dropdown, size +/- buttons
+        // and close button.  Clicks on the interactive elements
+        // themselves (select / button / keyboard keys / keyboard
+        // mount) have those elements as event.target, so this check
+        // correctly excludes them.
+        const isDragSurface = (target) => {
+            if (target === container) { return true; }
+            if (target && target.classList &&
+                target.classList.contains('noVNC_osk_controls')) {
+                return true;
+            }
+            return false;
+        };
+
         const applyAbsolutePosition = (rect) => {
             // Switch from the default `bottom: 0; left/right/margin:
             // auto` centering to explicit left/top coordinates so we
@@ -1829,7 +1845,7 @@ const UI = {
 
         // Mouse
         container.addEventListener('mousedown', (ev) => {
-            if (ev.target !== container) { return; }
+            if (!isDragSurface(ev.target)) { return; }
             ev.preventDefault();
             start(ev.clientX, ev.clientY);
         });
@@ -1838,7 +1854,7 @@ const UI = {
 
         // Touch
         container.addEventListener('touchstart', (ev) => {
-            if (ev.target !== container) { return; }
+            if (!isDragSurface(ev.target)) { return; }
             if (ev.touches.length !== 1) { return; }
             ev.preventDefault();
             const t = ev.touches[0];
