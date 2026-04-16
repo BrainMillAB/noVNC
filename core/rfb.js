@@ -2086,6 +2086,13 @@ export default class RFB extends EventTargetMixin {
 
         if (this._sock.rQwait("ATEN auth padding", 16)) { return false; }
 
+        // ATEN masquerades as Tight for the security-type hello only;
+        // the post-auth ServerInit does NOT carry the TightVNC extended
+        // block.  Clear the flag so _negotiateServerInit reads the
+        // plain fixed-size ServerInit (with ATEN's own 12-byte
+        // extension after the desktop name).
+        this._rfbTightVNC = false;
+
         // The next 16 bytes are server-emitted filler that ATEN ignores
         // (original kelleyk fork calls them the "mysteryFlag" region).
         this._sock.rQskipBytes(16);
@@ -2290,6 +2297,17 @@ export default class RFB extends EventTargetMixin {
         if (this._sock.rQwait('server init name', nameLength, 24)) { return false; }
         let name = this._sock.rQshiftStr(nameLength);
         name = decodeUTF8(name, true);
+
+        if (this._rfbAtenikvm) {
+            // ATEN tacks 12 bytes onto ServerInit after the desktop
+            // name: 8 unknown + 4 one-byte flags (IKVMVideoEnable,
+            // IKVMKMEnable, IKVMKickEnable, VUSBEnable).  Drain-only;
+            // we don't act on them yet.
+            if (this._sock.rQwait('ATEN ServerInit extension', 12, 24 + nameLength)) {
+                return false;
+            }
+            this._sock.rQskipBytes(12);
+        }
 
         if (this._rfbTightVNC) {
             if (this._sock.rQwait('TightVNC extended server init header', 8, 24 + nameLength)) { return false; }
@@ -2694,6 +2712,45 @@ export default class RFB extends EventTargetMixin {
             msgType = 0;
         } else {
             msgType = this._sock.rQshift8();
+        }
+
+        // ATEN iKVM servers interleave proprietary messages with the
+        // standard server->client channel.  All of them are drain-only
+        // from the client's perspective (none require a reply in
+        // practice — firmware keeps the session alive without one).
+        // Wire layout is [msgType: u8][payload: N bytes]; at this
+        // point msgType has already been consumed by the rQshift8
+        // above, so rQwait below uses goback=1 to allow a partial
+        // payload to back up and be retried cleanly.
+        if (this._rfbAtenikvm) {
+            switch (msgType) {
+                case 4:  // Front Ground Event
+                    if (this._sock.rQwait("ATEN FrontGround", 20, 1)) { return false; }
+                    this._sock.rQskipBytes(20);
+                    return true;
+                case 22: // Keep Alive Event
+                    if (this._sock.rQwait("ATEN KeepAlive", 1, 1)) { return false; }
+                    this._sock.rQskipBytes(1);
+                    return true;
+                case 51: // Video Get Info
+                    if (this._sock.rQwait("ATEN VideoGetInfo", 4, 1)) { return false; }
+                    this._sock.rQskipBytes(4);
+                    return true;
+                case 55: // Mouse Get Info
+                    if (this._sock.rQwait("ATEN MouseGetInfo", 2, 1)) { return false; }
+                    this._sock.rQskipBytes(2);
+                    return true;
+                case 57: // Session Message  (u32 + u32 + 256 bytes)
+                    if (this._sock.rQwait("ATEN SessionMsg", 264, 1)) { return false; }
+                    this._sock.rQskipBytes(264);
+                    return true;
+                case 60: // Get Viewer Lang
+                    if (this._sock.rQwait("ATEN GetViewerLang", 8, 1)) { return false; }
+                    this._sock.rQskipBytes(8);
+                    return true;
+            }
+            // fall through for types 0/1/2/3/150/248/250 — handled by
+            // the standard dispatch below.
         }
 
         let first, ret;

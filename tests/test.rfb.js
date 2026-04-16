@@ -2828,6 +2828,21 @@ describe('Remote Frame Buffer protocol client', function () {
                 expect(client._rfbConnectionState).to.equal('connected');
             });
 
+            it('should handle the ATEN-specific 12-byte ServerInit extension', function () {
+                // ATEN BMCs append 8 unknown bytes + 4 flag bytes
+                // (IKVMVideoEnable, IKVMKMEnable, IKVMKickEnable,
+                // VUSBEnable) after the desktop name.  We just drain
+                // them; test asserts connection completes cleanly.
+                client._rfbAtenikvm = true;
+                sendServerInit({}, client);
+
+                const atenExt = [];
+                for (let i = 0; i < 12; ++i) { atenExt.push(i); }
+                client._sock._websocket._receiveData(new Uint8Array(atenExt));
+
+                expect(client._rfbConnectionState).to.equal('connected');
+            });
+
             it('should resize the display', function () {
                 sinon.spy(client._display, 'resize');
                 sendServerInit({ width: 27, height: 32 }, client);
@@ -2905,6 +2920,55 @@ describe('Remote Frame Buffer protocol client', function () {
             client._fbName = 'some device';
             client._fbWidth = 640;
             client._fbHeight = 20;
+        });
+
+        describe('ATEN iKVM proprietary messages', function () {
+            // ATEN BMCs interleave these proprietary messages with the
+            // standard server->client channel.  The client drains them
+            // (none need a reply) and returns to idle; total bytes
+            // consumed = 1 (msgType) + N (payload).
+            const cases = [
+                { name: 'Front Ground Event', type: 4,  payloadLen: 20  },
+                { name: 'Keep Alive Event',   type: 22, payloadLen: 1   },
+                { name: 'Video Get Info',     type: 51, payloadLen: 4   },
+                { name: 'Mouse Get Info',     type: 55, payloadLen: 2   },
+                { name: 'Session Message',    type: 57, payloadLen: 264 },
+                { name: 'Get Viewer Lang',    type: 60, payloadLen: 8   },
+            ];
+
+            beforeEach(function () {
+                client._rfbAtenikvm = true;
+            });
+
+            cases.forEach(({ name, type, payloadLen }) => {
+                it('drains a ' + name + ' message (type ' + type + ', ' + payloadLen + ' payload bytes)', function () {
+                    const bytes = new Uint8Array(1 + payloadLen);
+                    bytes[0] = type;
+                    for (let i = 0; i < payloadLen; ++i) { bytes[i + 1] = i & 0xff; }
+                    client._sock._websocket._receiveData(bytes);
+
+                    // After draining, nothing should have been sent to
+                    // the server and no FB-update state should be
+                    // touched.
+                    expect(client._sock._websocket._getSentData()).to.have.lengthOf(0);
+                    expect(client._sock.rQlen()).to.equal(0);
+                });
+
+                it('resumes a partial ' + name + ' message across receives', function () {
+                    const bytes = new Uint8Array(1 + payloadLen);
+                    bytes[0] = type;
+                    for (let i = 0; i < payloadLen; ++i) { bytes[i + 1] = i & 0xff; }
+
+                    // Deliver just the msgType byte first — client
+                    // must wait for more.
+                    client._sock._websocket._receiveData(bytes.slice(0, 1));
+                    expect(client._sock.rQlen()).to.equal(1);
+
+                    // Deliver the remainder — client should drain.
+                    client._sock._websocket._receiveData(bytes.slice(1));
+                    expect(client._sock.rQlen()).to.equal(0);
+                });
+            });
         });
 
         describe('Framebuffer update handling', function () {
